@@ -9,7 +9,7 @@ keywords = ["bacterial-genome-analysis", "bioinformatics"]
 
 [dependencies]
 needletail = "*"
-pyo3 = { version = "0.8.5", features = ["extension-module"] }
+pyo3 = { version = "*", features = ["extension-module"] }
 bio = "*"
 miniz_oxide = "*"
 finch = "0.4.1"
