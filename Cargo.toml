@@ -1,0 +1,3 @@
+[dependencies]
+bio = "*"
+miniz_oxide = "*"
