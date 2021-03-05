@@ -1,1 +1,2 @@
-/test/
+/tests/*.fastq.gz
+packaging_info.txt

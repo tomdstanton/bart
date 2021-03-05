@@ -2,11 +2,13 @@ import mmap
 import re
 import contextlib
 import io
+import gzip
 
 class FqUtils():
 
-    reads_file = '/home/tom/PycharmProjects/genefinda/test/1543722_R1.fastq'
-    def try_open(reads_file):
+    in_ = 'test/test_R1.fastq.gz'
+    
+    def try_open(in_):
         fp = None
         try:
             import gzip
@@ -52,8 +54,6 @@ class FqUtils():
 
     #def gc_calc(self):
 
-    test = '/home/tom/PycharmProjects/genefinda/test/1543722_R1.fastq'
-
     def grep(pattern, file_path):
         with io.open(file_path, "r", encoding="utf-8") as f:
             with contextlib.closing(mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)) as m:
@@ -62,19 +62,14 @@ class FqUtils():
 
     grep(re.compile(b'@'), test)
 
-    with io.open(test, "r", encoding="utf-8") as f:
+    with io.open(in_, "r", encoding="utf-8") as f:
         with contextlib.closing(mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)) as m:
             for line in m:
                 print(len(line))
 
 
-import mmap
-import gzip
 
-filename = "a.gz"
-handle = open(filename, "rb")
+handle = open(in_, "rb")
 mapped = mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ)
 gzfile = gzip.GzipFile(mode="r", fileobj=mapped)
-
-print gzfile.read()
-
+print(gzfile.read())
