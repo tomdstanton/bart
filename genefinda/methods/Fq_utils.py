@@ -6,7 +6,8 @@ import gzip
 
 class FqUtils():
 
-    in_ = 'test/test_R1.fastq.gz'
+    r1 = 'tests/test_R1.fastq.gz'
+    r2 = 'tests/test_R2.fastq.gz'
     
     def try_open(in_):
         fp = None
@@ -69,7 +70,7 @@ class FqUtils():
 
 
 
-handle = open(in_, "rb")
+handle = open(r1, "rb")
 mapped = mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ)
 gzfile = gzip.GzipFile(mode="r", fileobj=mapped)
 print(gzfile.read())
