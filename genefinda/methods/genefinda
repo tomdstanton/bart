@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import logging
+import argparse
+import json
+from subprocess import Popen, PIPE
+from platform import system
+import os
+from requests import get
+
+
+r1 = 'tests/test_R1.fastq.gz'
+r2 = 'tests/test_R2.fastq.gz'
+sketch = 'tests/test.sk'
+finch = '/home/tom/.cargo/bin/finch'
+
+class input_parse():
+
+    def readfq(fp):  # this is a generator function
+        last = None  # this is a buffer keeping the last unprocessed line
+        while True:  # mimic closure; is it a bad idea?
+            if not last:  # the first record or a record following a fastq
+                for l in fp:  # search for the start of the next record
+                    if l[0] in '>@':  # fasta/q header line
+                        last = l[:-1]  # save this line
+                        break
+            if not last: break
+            name, seqs, last = last[1:].partition(" ")[0], [], None
+            for l in fp:  # read the sequence
+                if l[0] in '@+>':
+                    last = l[:-1]
+                    break
+                seqs.append(l[:-1])
+            if not last or last[0] != '+':  # this is a fasta record
+                yield name, ''.join(seqs), None  # yield a fasta record
+                if not last: break
+            else:  # this is a fastq record
+                seq, leng, seqs = ''.join(seqs), 0, []
+                for l in fp:  # read the quality
+                    seqs.append(l[:-1])
+                    leng += len(l) - 1
+                    if leng >= len(seq):  # have read enough quality
+                        last = None
+                        yield name, seq, ''.join(seqs);  # yield a fastq record
+                        break
+                if last:  # reach EOF before reading enough quality
+                    yield name, seq, None  # yield a fasta record instead
+                    break
+
+
+class finch():
+
+    def r_sk(self):
+        path = 'db/refseq_sketches_21_1000.sk'
+        if not os.path.isfile(path):
+            url = 'https://static.onecodex.com/public/finch-rs/refseq_sketches_21_1000.sk.gz'
+
+
+
+            with open(path, 'wb') as out:
+                out.write(get(url).content)
+        return path
+
+    def sketch_input(reads, sketch):
+        child = Popen(['cat', reads, '|', finch, 'sketch', '-o', sketch, '-'], stdin=PIPE)
+        child.stdin.write(r1.encode())
+        child.communicate()
+        return sketch
+
+    def info(sketch):
+        child = Popen([finch, 'info', sketch], stdout=PIPE)
+        r = child.communicate()[0].decode('utf-8').split('\n')
+        return [r.slice(1,3,1).split(': ')] #uniq_kmers, ave_depth, gc%
+
+    def dist(sketch):
+        child = Popen([finch, 'dist', sketch, r_sk()], stdout=PIPE)
+        r = json.loads(child.communicate()[0])
+        return sorted(r, key=lambda k: k['mashDistance'])[0]
+
+class kma():
+
+    def index(infile, outfile):
+        # kma index -i -- -o outfile
+        return outfile
+    
+    def ipe(reads, index, id, threads):
+        # kma -ipe r1 r2 -ID 80 -o outfile -t_db index
+        # -na -nf -ID 50 -bc90 -mct 0 -t 4
+        return results
+
+class style():
+    BLACK = '\033[30m'
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+    YELLOW = '\033[33m'
+    BLUE = '\033[34m'
+    MAGENTA = '\033[35m'
+    CYAN = '\033[36m'
+    WHITE = '\033[37m'
+    UNDERLINE = '\033[4m'
+    RESET = '\033[0m'
+
+print(style.YELLOW + "Hello, World!")
+
+def main():
+if __name__ == '__main__':
+    main()

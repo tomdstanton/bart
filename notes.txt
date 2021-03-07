@@ -6,8 +6,8 @@ finch dist tests/test_R1.fastq db/refseq_sketches_21_1000.sk > test
 
 this didn't yield correct results, will try concat both fastq files, then sketch and run
 
-cat tests/test_R* | finch sketch -o testfile.sk -
-
+this worked perfectly: cat tests/test_R* | 
+finch sketch -o testfile.sk - && 
 finch dist testfile.sk db/refseq_sketches_21_1000.sk > test
 
-this worked perfectly
+this works even better: finch dist tests/test_R1.fastq.gz.sk db/refseq_sketches_21_1000.sk > test
