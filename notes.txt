@@ -1,9 +1,13 @@
-# testing the SILVA ref databases
-# first need to convert from RNA to DNA
-sed '/^[^>]/s/u/t/g' <( gunzip -c SILVA_138.1_LSURef_NR99_tax_silva.fasta.gz ) > 23s.fna
+https://static.onecodex.com/public/finch-rs/refseq_sketches_21_1000.sk.gz
 
-sed '/^[^>]/s/U/T/g' <( gunzip -c SILVA_138.1_LSURef_NR99_tax_silva.fasta.gz ) > 23s.fna &&
-sed '/^[^>]/s/U/T/g' <( gunzip -c SILVA_138.1_SSURef_NR99_tax_silva.fasta.gz ) > 16s.fna
+finch can't handle gzipped files or the larger database: refseq_sketches_31_10000.sk.gz
 
-awk '{if(NR==1) {print $0} else {if($0 ~ /^>/) {print "\n"$0} else {printf $0}}}' *.fna > rrna.fna
+finch dist tests/test_R1.fastq db/refseq_sketches_21_1000.sk > test
 
+this didn't yield correct results, will try concat both fastq files, then sketch and run
+
+cat tests/test_R* | finch sketch -o testfile.sk -
+
+finch dist testfile.sk db/refseq_sketches_21_1000.sk > test
+
+this worked perfectly
