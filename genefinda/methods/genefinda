@@ -55,9 +55,7 @@ class finch():
         path = 'db/refseq_sketches_21_1000.sk'
         if not os.path.isfile(path):
             url = 'https://static.onecodex.com/public/finch-rs/refseq_sketches_21_1000.sk.gz'
-
-
-
+            # need to gunzip
             with open(path, 'wb') as out:
                 out.write(get(url).content)
         return path
