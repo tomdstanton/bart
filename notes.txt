@@ -11,3 +11,9 @@ finch sketch -o testfile.sk - &&
 finch dist testfile.sk db/refseq_sketches_21_1000.sk > test
 
 this works even better: finch dist tests/test_R1.fastq.gz.sk db/refseq_sketches_21_1000.sk > test
+
+kma -ipe tests/*.fastq.gz -ID 95 -o test -t_db db/mlst -t 4   ---->>>> this took 5 mins
+
+
+
+kma -ipe tests/*.fastq.gz -ID 95 -o test1 -sasm -bc90 -mmap -t_db db/mlst -t 4 -a
