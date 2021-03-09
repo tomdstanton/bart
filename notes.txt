@@ -16,4 +16,4 @@ kma -ipe tests/*.fastq.gz -ID 95 -o test -t_db db/mlst -t 4   ---->>>> this took
 
 
 
-kma -ipe tests/*.fastq.gz -ID 90 -o test -bc90 -mmap -t_db db/kma_index/klebsiella -t 4
+kma -ipe tests/*.fastq.gz -ID 90 -o test -bc90 -mmap -t_db db/kma_index/klebsiella -t 4 --->>>> this took like 10 seconds
