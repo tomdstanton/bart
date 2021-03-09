@@ -1,103 +1,144 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import logging
-import json
-from subprocess import Popen, PIPE
-import os
 from requests import get
 from re import search
 from collections import defaultdict
 from difflib import get_close_matches
+from argparse import ArgumentParser, SUPPRESS
+import logging
+import sys, os
+import pathlib
+import datetime
+import time
+import pkg_resources
+
+def parse_args():
+    parser = ArgumentParser()
+    parser_script = parser.add_argument_group('Basic ISMapper options')
+    parser_hits = parser.add_argument_group('Parameters for defining hits')
+    parser_bwa = parser.add_argument_group('BWA parameters')
+    parser_table = parser.add_argument_group('Parameters for output table')
+    parser_output = parser.add_argument_group('Reporting parameters')
+
+    ismap_version = pkg_resources.require("ISMapper")[0].version
+    parser_script.add_argument("--version", action='version', version='%(prog)s ' + ismap_version)
+    # Inputs
+    parser_script.add_argument('--reads', nargs='+', type=pathlib.Path, required=True,
+                               help='Paired end reads for analysing (can be gzipped)')
+
+    parser_script.add_argument('--help_all', required=False, action=None, help='Display extended help')
+
+    # List of arguments to show in quick help
+    quick_help_args = ('--version', '--reads', '--queries', '--reference', '--output_dir', '--log', '--help_all')
+
+    # Parameters for defining hits
+    parser_hits.add_argument('--min_clip', type=int, required=False, default=10,
+                                 help='Minimum size for softclipped region to be extracted from initial mapping (default 10).')
+
+    # BWA/read grouping parameters
+    parser_bwa.add_argument('--a', action='store_true', required=False,
+                                 help='Switch on all alignment reporting for bwa.')
+
+    # Output table parameters
+    parser_table.add_argument('--cds', type=str, required=False, default='product',
+                                 help='qualifier containing gene information (default product). Also note that all CDS features MUST have a locus_tag')
+    # Reporting parameters
+    parser_output.add_argument('--temp', action='store_true', required=False,
+                               help='Switch on keeping the temp folder instead of deleting it at the end of the run')
+    # Suppress all arguments other than quick help unless --help_all is parsed
+    if '--help_all' in sys.argv[1:]:
+        parser.print_help()
+        sys.exit(0)
+    else:
+        for arg in parser._actions:
+            if not any(qarg in arg.option_strings for qarg in quick_help_args):
+                arg.help = SUPPRESS
+
+    args = parser.parse_args()
+
+    return args
 
 
-r1 = 'tests/test_R1.fastq.gz'
-r2 = 'tests/test_R2.fastq.gz'
-sketch = 'tests/test.sk'
-finch = '/home/tom/.cargo/bin/finch'
-reads = f'{r1} {r2}'
+class NoSeqError(Exception):
+    def __init__(self, message):
+        self.message = message
+
+def get_sequences(seq_files, seq_format):
+
+    # if the list is empty, raise an error
+    if len(seq_records) == 0 and seq_format == 'fasta':
+        logging.error('One of your IS queries contained no sequence, please check')
+        logging.info('ISMapper exiting')
+        raise NoSeqError('No sequence was found in one of your IS query file(s).')
 
 
-def url_dict():
+def main():
+
+    # intialise the start time
+    start_time = time.time()
+
+    # get arguments
+    args = parse_args()
+
+    if args.output_dir != '':
+        working_dir = os.path.expanduser(args.output_dir)
+    else:
+        working_dir = os.getcwd()
+
+    # set up logfile
+    logging.basicConfig(
+        filename=args.log + '.log',
+        level=logging.DEBUG,
+        filemode='w',
+        format='%(asctime)s %(message)s',
+        datefmt='%d/%m/%Y %H:%M:%S')
+    logging.info('program started')
+    logging.info('command line: {0}'.format(' '.join(sys.argv)))
+    logging.info(working_dir)
+
+def url_dict(): # creates a dict for PubMLST Schemes
     d = defaultdict(list)
-    fungi = ["afumigatus", "blastocystis", "calbicans",
-             "cglabrata", "ckrusei", "ctropicalis", "csinensis",
-             "kseptempunctata", "sparasitica", "tvaginalis"]
-    ftypes = ['fasta', 'csv']
+    fungi = ["afumigatus", "blastocystis", "calbicans", "cglabrata", "ckrusei",
+             "ctropicalis", "csinensis", "kseptempunctata", "sparasitica", "tvaginalis"]
+    ft = ['fasta', 'csv']
     for line in get('https://pubmlst.org/static/data/dbases.xml').text.split('\n'):
         if search('<url>', line) and not any(f in line for f in fungi) \
-                and any(ft in line for ft in ftypes):
+                and any(ft in line for ft in ft):
             key = line.split('pubmlst_')[1].split('_seqdef')[0]
             d[key].append(line.split('>')[1].split('<')[0])
     return d
 
-def kindex(infile, outfile):
-    child = Popen(['kma', 'index', '-i', '--', '-o', outfile], stdin=PIPE)
-    child.stdin.write(infile.encode())
-    return child.communicate()
+def build_kma_indexes(d): # builds kma index for each scheme in dictionary
+    from genefinda.methods.kma import index # avoid unnecessary import
+    for k, v in d().items():
+        i = ''
+        for url in v:
+            if 'fasta' in url:
+                i += get(url).text
+        index(i, f'db/{k}')
 
-for k, v in url_dict().items():
-    index = ''
-    for url in v:
-        if 'fasta' in url:
-            index += get(url).text
-    kindex(index, f'db/{k}')
 
-s = 'Klebsiella pneumoniae'
-p = f"{s.split(' ')[0][0].lower()}{s.split(' ')[1]}"
-get_close_matches(p, [*url_dict()])
+def choose_scheme(finch_out): # chooses best scheme based on finch containment
+    d = {}
+    with open('db/scheme_species_map.tab') as f:
+        for line in f:
+            key = line.split('\t')[1] + ' ' + line.split('\t')[2]
+            d[key.strip()] = line.strip().split('\t')[0]
+    return get_close_matches(finch_out, list(d))[0]
 
-class Finch:
+if __name__ == "__main__":
 
-    logger = logging.getLogger('\x1b[6;30;42m' + 'finch' + '\x1b[0m')
+    parser = ArgumentParser(add_help=False, usage="genefinda reads_1.fq.gz reads_2.fq.gz [options]")
+    parser.add_argument('input', nargs='2', help=SUPPRESS)
+    parser.add_argument('--scheme', type='str', help=SUPPRESS)
+    args = parser.parse_args()
 
-    def r_sk():
-        path = 'db/refseq_sketches_21_1000.sk'
-        if not os.path.isfile(path):
-            url = 'https://static.onecodex.com/public/finch-rs/refseq_sketches_21_1000.sk.gz'
-            # need to gunzip
-            with open(path, 'wb') as out:
-                out.write(get(url).content)
-        return path
+    ### Sanity Checks ###
+    if not isfile('db/refseq_sketches_21_1000.sk'):
+        from genefinda.methods.finch import get_ref
+        get_ref('db/refseq_sketches_21_1000.sk')
 
-    def sketch_input(reads, sketch):
-        cmd = ['finch', 'sketch', '-o', sketch, '-']
-        #Finch.logger.info(f'Running: {" ".join(cmd)}')
-        child = Popen(cmd, stdin=PIPE)
-        child.stdin.write(reads.encode())
-        return child.communicate()
-
-    sketch_input(reads,sketch)
-
-    def info(sketch):
-        cmd = [finch, 'info', sketch]
-        Finch.logger.info(f'Running: {" ".join(cmd)}')
-        child = Popen(cmd, stdout=PIPE)
-        r = child.communicate()[0].decode('utf-8').split('\n')
-        return [r.slice(1,3,1).split(': ')] #uniq_kmers, ave_depth, gc%
-
-    def dist(sketch):
-        cmd = [finch, 'dist', sketch, Finch.r_sk]
-        Finch.logger.info(f'Running: {" ".join(cmd)}')
-        child = Popen(cmd, stdout=PIPE)
-        r = json.loads(child.communicate()[0])
-        return sorted(r, key=lambda k: k['mashDistance'])[0]
-
-class KMA:
-
-    logger = logging.getLogger('\x1b[6;30;42m' + 'kma' + '\x1b[0m')
-
-    def index(infile, outfile):
-        cmd = ['kma', 'index', '-i', '--', '-o', outfile]
-        KMA.logger.info(f'Running: {" ".join(cmd)}')
-        child = Popen(cmd, stdin=PIPE)
-        child.stdin.write(infile.encode())
-        return child.communicate()
-    
-    def ipe(reads, id, index, threads):
-        cmd = ['kma', '-ipe', reads, '-ID', id,
-               '-o', '/dev/stdout', '-t_db', index, '-t', threads]
-        # -na -nf -bc90 -mct 0
-        KMA.logger.info(f'Running: {" ".join(cmd)}')
-        child = Popen(cmd, stdout=PIPE)
-        return child.communicate()[0].decode()
+    if args.scheme is False:
+        from genefinda.methods.finch import sketch_input
+        sketch_input(args.input, )
