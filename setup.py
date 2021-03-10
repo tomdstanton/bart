@@ -26,9 +26,8 @@ setup(
     packages=find_packages(),
     python_requires=">=3.7",
     include_package_data = True,
-    package_data={'genefinda': ['genefinda/data/']},
+    package_data={'genefinda': ['genefinda/db/scheme_species_map.tab']},
     scripts=['genefinda/genefinda'],
-    author_email='T.D.Stanton@sms.ed.ac.uk',
     keywords='microbial genomics amr virulence',
     install_requires=requirements,
     zip_safe=False
