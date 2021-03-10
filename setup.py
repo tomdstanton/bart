@@ -1,4 +1,10 @@
 from setuptools import setup, find_packages
+from distutils.util import convert_path
+
+main_ns = {}
+ver_path = convert_path('genefinda/version.py')
+with open(ver_path) as ver_file:
+    exec(ver_file.read(), main_ns)
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
@@ -8,7 +14,7 @@ with open("README.md", "r", encoding="utf-8") as rm:
 
 setup(
     name="genefinda",
-    version="0.0.1",
+    version=main_ns['__version__'],
     author="Tom Stanton",
     author_email="tomdstanton@gmail.com",
     description="Quickly find MLST profile and genes of interest in bacterial short reads",
