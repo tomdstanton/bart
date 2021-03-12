@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from re import search, compile
+from re import search, compile, DOTALL, findall
 from collections import defaultdict
-from difflib import get_close_matches
+from difflib import get_close_matches, SequenceMatcher
 from argparse import ArgumentParser
 import os
 from pathlib import Path
@@ -13,7 +13,6 @@ from json import loads
 from subprocess import Popen, PIPE, run, DEVNULL
 from requests import get
 import pandas as pd
-from shutil import copyfileobj
 
 from genefinda.version import __version__
 
@@ -40,6 +39,17 @@ def pubmlst_dict():  # creates a dict for PubMLST Schemes
             key = line.split('pubmlst_')[1].split('_seqdef')[0]
             d[key].append(line.split('>')[1].split('<')[0])
     return d
+
+def pubmlst_map():
+    csv = ''
+    for m in findall('<species>(.*?)</url>\n</profiles>',
+                     get('https://pubmlst.org/static/data/dbases.xml').text, DOTALL):
+        scheme = m.split('pubmlst_')[1].split('_seqdef')[0]
+        species = m.split(' <mlst>')[0].split('\n<mlst>')[0]
+        csv += f'{scheme},{species}\n'
+
+    with open(f'{db_path}/mapping.csv', 'wt') as f:
+        f.write(csv)
 
 
 def get_ref(path):
@@ -81,7 +91,11 @@ def dist(sketch, ref):
     logger.info(f'{" ".join(cmd)}')
     child = Popen(cmd, stdout=PIPE)
     r = loads(child.communicate()[0])
-    return sorted(r, key=lambda k: k['mashDistance'])[0]
+    return sorted(r, key=lambda k: k['mashDistance'])[:2]
+
+
+def similar(a, b):
+    return SequenceMatcher(None, a.split(' ')[:2], b.split(' ')[:2]).ratio()
 
 
 def index(infile, outfile):
@@ -111,21 +125,20 @@ def build_kma_indexes(d):  # builds kma index for each scheme in dictionary
                 i += get(url).text
         index(i, f'db/{k}')
 
+
 def build_csv(d):  # builds kma index for each scheme in dictionary
-    for k, v in d().items():
+    for k, v in d.items():
         for url in v:
             if 'csv' in url:
-                with open(f'{db_path}, wb') as f:
-                    get(url).raw.decode_content = True
-                    copyfileobj(get(url).raw, f)
+                with open(f'{db_path}/mapping/{k}.tab', 'wb') as f:
+                    f.write(get(url).content)
 
 
 def choose_scheme(finch_out):  # chooses best scheme based on finch containment
     d = {}
-    with open('db/scheme_species_map.tab') as f:
+    with open(f'{db_path}/mapping.csv') as f:
         for line in f:
-            key = line.split('\t')[1] + ' ' + line.split('\t')[2]
-            d[key.strip()] = line.strip().split('\t')[0]
+            d[line.split(',')[1]] = line.split(',')[0]
     match = get_close_matches(finch_out, list(d))[0]
     return d[match]
 
@@ -142,74 +155,89 @@ def main():
     if 'Linux' not in os.uname()[0]:
         logger.warning(f'genefinda has not been tested on {os.uname()[0]}')
 
+    #formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+
     logger.info(f'cwd is {os.getcwd()}')
     #logger.info(f'bin path is {bin_path}')
     #logger.info(f'db path is {db_path}')
     args = parse_args()
 
-    ### Inbuilt MLST index builder ###
+    ### Inbuilt scheme index builder ###
 
-    if args.input == 'update mlst':
+    if f'{str(args.input[0])} {str(args.input[1])}' == 'update indexes':
         logger.info(f'building scheme fasta indexes')
         build_kma_indexes(pubmlst_dict())
         exit()
 
-    if args.input == 'update csv':
+    elif f'{str(args.input[0])} {str(args.input[1])}' == 'update schemes':
         logger.info(f'downloading scheme csv files')
         build_csv(pubmlst_dict())
         exit()
 
-    ### Sanity Checks ###
-    threads = str(args.t)
-    if args.t > os.cpu_count():
-        logger.warning(f'number of threads exceeds available CPUs')
-        threads = str(os.cpu_count())
-    logger.info(f'using {threads} threads')
+    elif f'{str(args.input[0])} {str(args.input[1])}' == 'update map':
+        logger.info(f'creating scheme to species map')
+        pubmlst_map()
+        exit()
 
-    ref = f'{db_path}/refseq_sketches_21_1000.sk'
-    if not os.path.isfile(ref):
-        logger.warning(f'{ref} not found')
-        get_ref(ref)
+    ### Run main program ###
+    else:
+        ### Sanity Checks ###
 
-    ### Check input filetypes and create read-pair dict ###
-    suffixes = ['_R[12]\.(fastq(?:\.gz)?)$', '_R[12]_[0-9]+?\.(fastq(?:\.gz)?)$',
-                '_[12]\.(fastq(?:\.gz)?)$', '_R[12]\.(fq(?:\.gz)?)$',
-                '_R[12]_[0-9]+?\.(fq(?:\.gz)?)$', '_[12]\.(fq(?:\.gz)?)$']
+        threads = str(args.t)
+        if args.t > os.cpu_count():
+            logger.warning(f'number of threads exceeds available CPUs')
+            threads = str(os.cpu_count())
+        logger.info(f'using {threads} threads')
 
-    r = compile('|'.join(suffixes))
-    pairs = defaultdict(list)
-    for i in args.input:
-        if not os.path.isfile(i):
-            logger.error(f'{i} is not a valid file')
-        else:
-            filename = str(i)
-            s = search(r, filename)
-            if s:
-                pairs[filename.replace(s.group(0), '')].append(str(i))
+        ref = f'{db_path}/refseq_sketches_21_1000.sk'
+        if not os.path.isfile(ref):
+            logger.warning(f'{ref} not found')
+            get_ref(ref)
+
+        ### Check input filetypes and create read-pair dict ###
+        suffixes = ['_R[12]\.(fastq(?:\.gz)?)$', '_R[12]_[0-9]+?\.(fastq(?:\.gz)?)$',
+                    '_[12]\.(fastq(?:\.gz)?)$', '_R[12]\.(fq(?:\.gz)?)$',
+                    '_R[12]_[0-9]+?\.(fq(?:\.gz)?)$', '_[12]\.(fq(?:\.gz)?)$']
+
+        r = compile('|'.join(suffixes))
+        pairs = defaultdict(list)
+        for i in args.input:
+            if not os.path.isfile(i):
+                logger.error(f'{i} is not a valid file')
             else:
-                logger.error(f'{i} is not a fastq file')
+                filename = str(i)
+                s = search(r, filename)
+                if s:
+                    pairs[filename.replace(s.group(0), '')].append(str(i))
+                else:
+                    logger.error(f'{i} is not a fastq file')
 
-    ### Loop over read-pair dict ###
-    for name in pairs.keys():
-        sample = os.path.basename(name)
-        logger.info(f'read pair for {sample}: {" ".join(pairs[name])}')
-        sketch = f'{name}.sk'
-        if not os.path.isfile(sketch):
+        ### Loop over read-pair dict ###
+        for name in pairs.keys():
+            sample = os.path.basename(name)
             logger.info(f'read pair for {sample}: {" ".join(pairs[name])}')
-            sketch_input(pairs[name], sketch)
-        info(sketch)
-        finch = dist(sketch, ref)
-        logger.info(f'closest refseq genome is {finch["reference"]}')
-        scheme = choose_scheme(finch["reference"])
-        logger.info(f'choosing scheme: {scheme}')
-        ipe(pairs[name], f'{name}', '90', f'{db_path}/indexes/{scheme}', threads)
+            sketch = f'{name}.sk'
+            if not os.path.isfile(sketch):
+                logger.info(f'read pair for {sample}: {" ".join(pairs[name])}')
+                sketch_input(pairs[name], sketch)
+            info(sketch)
+            finch = dist(sketch, ref)
+            s1 = finch[0]["reference"]
+            logger.info(f'closest refseq genome is {s1}')
+            # s2 = finch[1]["reference"]
+            # logger.info(f'second-closest refseq genome is {s2}')
+            scheme = choose_scheme(s1)
+            logger.info(f'choosing scheme: {scheme}')
+            ipe(pairs[name], f'{name}', '90', f'{db_path}/indexes/{scheme}', threads)
+            df = pd.read_csv(f'{name}.res', delimiter='\t')
+            df[['#Template', 'allele']] = df['#Template'].str.split('_', expand=True)
+            df = df[df.groupby(['#Template'])['q_value'].transform(max) == df['q_value']]
+            df = df.set_index('#Template').T.astype(int)
+            df1 = pd.read_csv(f'{db_path}/mapping/{scheme}.tab', delimiter='\t', index_col=False)
+            mlst = df1.merge(df, on=list(df.columns.intersection(df1.columns)), how='inner')
+            print(mlst.to_csv(sep='\t', index=False))
 
-        mlst = pd.read_csv(f'{name}.res', delimiter='\t')
-
-        print(mlst)
-
-        logger.info(f'completed in {"{:.1f}".format(int(time() - start))} seconds')
-
+    logger.info(f'completed in {"{:.1f}".format(int(time() - start))} seconds')
 
 if __name__ == '__main__':
     main()
