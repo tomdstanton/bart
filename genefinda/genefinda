@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from re import search
+from re import search, compile
 from collections import defaultdict
 from difflib import get_close_matches
 from argparse import ArgumentParser
 import os
 from pathlib import Path
 from time import time
-from datetime import datetime
-from logging import getLogger
+import logging
 from json import loads
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, run, DEVNULL
 from requests import get
+import pandas as pd
+from shutil import copyfileobj
 
+from genefinda.version import __version__
+
+bin_path = os.path.dirname(__file__)
+db_path = f'{os.path.dirname(bin_path)}/db'
 
 def parse_args():
     parser = ArgumentParser(add_help=False, usage="genefinda reads_1.fq.gz reads_2.fq.gz [options]")
@@ -24,7 +29,7 @@ def parse_args():
     return args
 
 
-def url_dict(): # creates a dict for PubMLST Schemes
+def pubmlst_dict():  # creates a dict for PubMLST Schemes
     d = defaultdict(list)
     fungi = ["afumigatus", "blastocystis", "calbicans", "cglabrata", "ckrusei",
              "ctropicalis", "csinensis", "kseptempunctata", "sparasitica", "tvaginalis"]
@@ -38,7 +43,7 @@ def url_dict(): # creates a dict for PubMLST Schemes
 
 
 def get_ref(path):
-    logger = getLogger('\x1b[6;30;42m' + 'Fetch RefSeq Sketches' + '\x1b[0m')
+    logger = logging.getLogger('\x1b[6;30;42m' + 'Fetch RefSeq Sketches' + '\x1b[0m')
     url = 'https://static.onecodex.com/public/finch-rs/refseq_sketches_21_1000.sk.gz'
     # need to gunzip
     with open(path, 'wb') as out:
@@ -47,51 +52,58 @@ def get_ref(path):
         logger.info(f'Written to {path}')
     return path
 
-def sketch_input(reads, sketch):
-    logger = getLogger('\x1b[6;30;42m' + 'finch' + '\x1b[0m')
-    finch = '/home/tom/.cargo/bin/finch'
-    cmd = [finch, 'sketch', '-o', sketch, '-']
-    logger.info(f'Running: {" ".join(cmd)}')
-    child = Popen(cmd, stdin=PIPE)
-    child.stdin.write(reads.encode())
-    return child.communicate()
+
+def sketch_input(reads, sketch_out):
+    logger = logging.getLogger('\x1b[6;30;42m' + 'finch' + '\x1b[0m')
+    cmd = f'cat {reads[0]} {reads[1]} | finch sketch -o {sketch_out} -'
+    logger.info(f'{cmd}')
+    return run(cmd, shell=True)
+
 
 def info(sketch):
-    logger = getLogger('\x1b[6;30;42m' + 'finch' + '\x1b[0m')
-    finch = '/home/tom/.cargo/bin/finch'
-    cmd = [finch, 'info', sketch]
-    logger.info(f'Running: {" ".join(cmd)}')
+    logger = logging.getLogger('\x1b[6;30;42m' + 'finch' + '\x1b[0m')
+    cmd = ['finch', 'info', sketch]
+    logger.info(f'{" ".join(cmd)}')
     child = Popen(cmd, stdout=PIPE)
     r = child.communicate()[0].decode('utf-8').split('\n')
-    return [r.slice(1,3,1).split(': ')] #uniq_kmers, ave_depth, gc%
+    kmers = r[1].split(': ')[1]
+    depth = r[2].split(': ')[1]
+    gc = r[3].split(': ')[1].strip('%')
+    logger.info(f'{"{:.1f}".format(int(kmers)/1000000)}Mbp genome, '
+                f'{depth} average depth, '
+                f'{"{:.1f}".format(float(gc))}% GC')
+    return kmers, depth, gc
+
 
 def dist(sketch, ref):
-    logger = getLogger('\x1b[6;30;42m' + 'finch' + '\x1b[0m')
-    finch = '/home/tom/.cargo/bin/finch'
-    cmd = [finch, 'dist', sketch, ref]
-    logger.info(f'Running: {" ".join(cmd)}')
+    logger = logging.getLogger('\x1b[6;30;42m' + 'finch' + '\x1b[0m')
+    cmd = ['finch', 'dist', sketch, ref]
+    logger.info(f'{" ".join(cmd)}')
     child = Popen(cmd, stdout=PIPE)
     r = loads(child.communicate()[0])
     return sorted(r, key=lambda k: k['mashDistance'])[0]
 
+
 def index(infile, outfile):
-    logger = getLogger('\x1b[6;30;42m' + 'kma' + '\x1b[0m')
+    logger = logging.getLogger('\x1b[6;30;42m' + 'kma' + '\x1b[0m')
     cmd = ['kma', 'index', '-i', '--', '-o', outfile]
-    logger.info(f'Running: {" ".join(cmd)}')
+    logger.info(f'{" ".join(cmd)}')
     child = Popen(cmd, stdin=PIPE)
     child.stdin.write(infile.encode())
     return child.communicate()
 
-def ipe(reads, id, index, threads):
-    logger = getLogger('\x1b[6;30;42m' + 'kma' + '\x1b[0m')
-    cmd = ['kma', '-ipe', reads, '-ID', id,
-           '-o', '/dev/stdout', '-t_db', index, '-t', threads]
-    # -na -nf -bc90 -mct 0
-    logger.info(f'Running: {" ".join(cmd)}')
-    child = Popen(cmd, stdout=PIPE)
-    return child.communicate()[0].decode()
 
-def build_kma_indexes(d): # builds kma index for each scheme in dictionary
+def ipe(reads, outfile, percid, scheme, threads):
+    logger = logging.getLogger('\x1b[6;30;42m' + 'kma' + '\x1b[0m')
+    cmd = ['kma', '-ipe', reads[0], reads[1], '-ID', percid, #'-1t1',
+           '-o', outfile, '-t_db', scheme, '-t', threads]
+    # -na -nf -bc90 -mct 0
+    logger.info(f'{" ".join(cmd)}')
+    child = Popen(cmd, stderr=DEVNULL)
+    return child.communicate()
+
+
+def build_kma_indexes(d):  # builds kma index for each scheme in dictionary
     for k, v in d().items():
         i = ''
         for url in v:
@@ -99,50 +111,105 @@ def build_kma_indexes(d): # builds kma index for each scheme in dictionary
                 i += get(url).text
         index(i, f'db/{k}')
 
-def choose_scheme(finch_out): # chooses best scheme based on finch containment
+def build_csv(d):  # builds kma index for each scheme in dictionary
+    for k, v in d().items():
+        for url in v:
+            if 'csv' in url:
+                with open(f'{db_path}, wb') as f:
+                    get(url).raw.decode_content = True
+                    copyfileobj(get(url).raw, f)
+
+
+def choose_scheme(finch_out):  # chooses best scheme based on finch containment
     d = {}
     with open('db/scheme_species_map.tab') as f:
         for line in f:
             key = line.split('\t')[1] + ' ' + line.split('\t')[2]
             d[key.strip()] = line.strip().split('\t')[0]
-    return get_close_matches(finch_out, list(d))[0]
+    match = get_close_matches(finch_out, list(d))[0]
+    return d[match]
+
 
 def main():
+    ### Ok, lets go ###
     start = time()
-    logger = getLogger('\x1b[6;30;42m' + 'genefinda' + '\x1b[0m')
-    logger.info(f'\033[4m{__file__} {__version__}\033[0m')
-    logger.info(f'Your system is {os.uname()[0]}')
+    logger = logging.getLogger('\x1b[6;30;42m' + 'genefinda' + '\x1b[0m')
+    logging.basicConfig(level=logging.INFO,
+                        format="[%(levelname)s] %(message)s",
+                        handlers=[logging.FileHandler("debug.log"), logging.StreamHandler()])
+    logger.info(f'genefinda {__version__}')
+    logger.info(f'your system is {os.uname()[0]}')
     if 'Linux' not in os.uname()[0]:
         logger.warning(f'genefinda has not been tested on {os.uname()[0]}')
-    logger.info(f'{datetime.today().strftime("%Y-%m-%d-%H:%M:%S")}')
 
+    logger.info(f'cwd is {os.getcwd()}')
+    #logger.info(f'bin path is {bin_path}')
+    #logger.info(f'db path is {db_path}')
     args = parse_args()
+
+    ### Inbuilt MLST index builder ###
+
+    if args.input == 'update mlst':
+        logger.info(f'building scheme fasta indexes')
+        build_kma_indexes(pubmlst_dict())
+        exit()
+
+    if args.input == 'update csv':
+        logger.info(f'downloading scheme csv files')
+        build_csv(pubmlst_dict())
+        exit()
+
     ### Sanity Checks ###
+    threads = str(args.t)
     if args.t > os.cpu_count():
-        logger.warning(f'Number of threads exceeds available CPUs, will use: {os.cpu_count()}')
+        logger.warning(f'number of threads exceeds available CPUs')
         threads = str(os.cpu_count())
-    else:
-        threads = str(args.t)
-        logger.info(f'Using {threads} threads...')
+    logger.info(f'using {threads} threads')
 
-    if not os.path.isfile('db/refseq_sketches_21_1000.sk'):
-        logger.warning('refseq_sketches_21_1000.sk not found')
-        get_ref('db/refseq_sketches_21_1000.sk')
+    ref = f'{db_path}/refseq_sketches_21_1000.sk'
+    if not os.path.isfile(ref):
+        logger.warning(f'{ref} not found')
+        get_ref(ref)
 
-    names = []
+    ### Check input filetypes and create read-pair dict ###
+    suffixes = ['_R[12]\.(fastq(?:\.gz)?)$', '_R[12]_[0-9]+?\.(fastq(?:\.gz)?)$',
+                '_[12]\.(fastq(?:\.gz)?)$', '_R[12]\.(fq(?:\.gz)?)$',
+                '_R[12]_[0-9]+?\.(fq(?:\.gz)?)$', '_[12]\.(fq(?:\.gz)?)$']
+
+    r = compile('|'.join(suffixes))
+    pairs = defaultdict(list)
     for i in args.input:
         if not os.path.isfile(i):
             logger.error(f'{i} is not a valid file')
-            exit()
-        else: names.append(os.path.splitext(os.path.basename(str(i)))[0])
+        else:
+            filename = str(i)
+            s = search(r, filename)
+            if s:
+                pairs[filename.replace(s.group(0), '')].append(str(i))
+            else:
+                logger.error(f'{i} is not a fastq file')
 
-    logger.info(f'Input files: {args.input}')
-    sample = set(names)
-    logger.info(f'Sample name: {sample}')
+    ### Loop over read-pair dict ###
+    for name in pairs.keys():
+        sample = os.path.basename(name)
+        logger.info(f'read pair for {sample}: {" ".join(pairs[name])}')
+        sketch = f'{name}.sk'
+        if not os.path.isfile(sketch):
+            logger.info(f'read pair for {sample}: {" ".join(pairs[name])}')
+            sketch_input(pairs[name], sketch)
+        info(sketch)
+        finch = dist(sketch, ref)
+        logger.info(f'closest refseq genome is {finch["reference"]}')
+        scheme = choose_scheme(finch["reference"])
+        logger.info(f'choosing scheme: {scheme}')
+        ipe(pairs[name], f'{name}', '90', f'{db_path}/indexes/{scheme}', threads)
 
-    sketch_input(args.input)
+        mlst = pd.read_csv(f'{name}.res', delimiter='\t')
 
-    logger.info('completed in ' + str(float(time() - start) / 60) + ' mins.')
+        print(mlst)
+
+        logger.info(f'completed in {"{:.1f}".format(int(time() - start))} seconds')
+
 
 if __name__ == '__main__':
     main()
