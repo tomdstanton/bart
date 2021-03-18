@@ -12,8 +12,6 @@ import logging
 from json import loads
 from subprocess import Popen, PIPE, run, DEVNULL
 from requests import get
-import csv
-
 
 from genefinda.version import __version__
 
@@ -30,6 +28,9 @@ def parse_args():
     parser.add_argument('-t', type=int, default=4, help='threads')
     parser.add_argument('-q', action='store_true', default=False, help='stfu unless emergency')
     parser.add_argument('--percid', type=int, default=90, help='percid')
+    parser.add_argument('--exact', action='store_false', default=True, help='turn off ST filtering by exact allele hits')
+    parser.add_argument('--info', action='store_true', default=False, help='print genome info only')
+    parser.add_argument('--species', action='store_true', default=False, help='print species only')
     parser.add_argument("-h", action="help", help='show this help message and exit')
     args = parser.parse_args()
     return args
@@ -83,9 +84,6 @@ def info(sketch):
     r = child.communicate()[0].decode('utf-8').split('\n')
     kmers, depth = r[1].split(': ')[1], r[2].split(': ')[1]
     gc = r[3].split(': ')[1].strip('%')
-    logger.info(f'{"{:.1f}".format(int(kmers)/1000000)}Mbp genome, '
-                f'{depth} average depth, '
-                f'{"{:.1f}".format(float(gc))}% GC')
     return kmers, depth, gc
 
 
@@ -218,9 +216,17 @@ def main():
             sketch = f'/tmp/{sample}.sk'
             if not os.path.isfile(sketch):
                 sketch_input(pairs[name], sketch)
-            info(sketch)
+            x = info(sketch)
+            if args.info:
+                print(f'genome_size({x[0]})\tave_depth({x[1]})\tgc({x[2]})')
+                continue
+            logger.info(f'{"{:.1f}".format(int(x[0]) / 1000000)}Mbp genome, '
+                        f'{x[1]} average depth, {"{:.1f}".format(float(x[2]))}% GC')
             finch = dist(sketch, ref)
             s1 = finch[0]["reference"]
+            if args.species:
+                print(s1)
+                continue
             logger.info(f'closest refseq genome is {s1}')
             # s2 = finch[1]["reference"]
             # logger.info(f'second-closest refseq genome is {s2}')
@@ -229,26 +235,25 @@ def main():
             ipe(pairs[name], f'/tmp/{sample}', str(args.percid),
                 f'{db_path}/indexes/{scheme}', threads)
 
+            # Profile matching
             with open(f'/tmp/{sample}.res', newline='\n') as res:
+            #with open(f'/tmp/ATCC19606_S17_L001.res', newline='\n') as res:
                 r = res.read().splitlines()
-                resdict = {}
+                res_dict = {}
                 for line in r[1:]:
                     v = line.split('\t')
                     v = [x.strip(' ') for x in v]
                     k = v[0].rsplit('_', 1)[0]
                     v[0] = v[0].rsplit('_', 1)[1]
-                    if k in list(resdict):
-                        if int(v[1]) > int(resdict[k][1]):
-                            resdict[k] = v
+                    if k in list(res_dict):
+                        if int(v[1]) > int(res_dict[k][1]):
+                            res_dict[k] = v
                     else:
-                        resdict[k] = v
-
-                # allele, Score, Expected, Template_length, Template_Identity, Template_Coverage, Query_Identity, Query_Coverage, Depth, q_value, p_value
+                        res_dict[k] = v
 
             with open(f'{db_path}/mapping/{scheme}.tab') as file:
+            #with open('/home/tom/PycharmProjects/genefinda/db/mapping/abaumannii.tab') as file:
                 p = ['ST\t'+ r for r in file.read().split('ST\t')[1:]]
-
-            # iterate if multiple schemes
             for s in p:
                 scheme_dict, headers = {}, s.split('\n', 1)[0].split('\t')[1:]
                 for line in s.splitlines()[1:]:
@@ -256,26 +261,39 @@ def main():
                     scheme_dict[int(v[0])] = {headers[i]: v[1:][i] for i in range(len(headers))}
                 genes = [g for g in headers if g not in ['clonal_complex', 'species']]
                 y = []
-                for k, v in resdict.items():
+                for k, v in res_dict.items():
                     if k in genes:
                         y.append(v[0])
 
+                exact = []
+                for k, v in res_dict.items():
+                    if v[4] == '100.00' and v[5] == '100.00':
+                        exact.append(k)
+                for i in exact:
+                    for st in list(scheme_dict.keys()):
+                        if scheme_dict[st][i] != res_dict[i][0]:
+                            scheme_dict.pop(st)
+
+                # Search for best 
                 scheme_match = defaultdict(list)
                 for st in scheme_dict.keys():
                     profile = []
                     for k, v in scheme_dict[st].items():
-                        if k in resdict.keys() & genes:
+                        if k in res_dict.keys() & genes:
                             profile.append(v)
                     scheme_match[SequenceMatcher(None, profile, y).ratio()].append(st)
-
                 scheme_match = sorted(scheme_match.items(), key=lambda item: item[0], reverse=True)[0]
 
                 if len(scheme_match[1]) > 1:
                     logger.info(f'{len(scheme_match[1])} close matches found')
 
                 for st in scheme_match[1]:
-                    o = [sample]
-
+                    o = [sample, scheme, st]#({int(scheme_match[0]*100)}%)']
+                    for k, v in scheme_dict[st].items():
+                        if k in headers:
+                            if  v != '':
+                                o.append(f'{k}({v})')
+                        else: o.append(f'{k} no hit')
                     print(*o, sep="\t")
 
     logger.info(f'completed in {"{:.1f}".format(time() - start)} seconds')
