@@ -1,5 +1,4 @@
-/tests/test_R1.fastq.gz
-/tests/test_R2.fastq.gz
+/tests/*.fastq.gz
 packaging_info.txt
 /db/kma_index
 /db/refseq_sketches_21_1000.sk

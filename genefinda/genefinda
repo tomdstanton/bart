@@ -154,7 +154,12 @@ def choose_scheme(finch_out):  # chooses best scheme based on finch containment
 
 def main():
     args = parse_args()
-    ### Ok, lets go ###
+    if args.q: logger.setLevel(logging.ERROR)
+    threads = str(args.t)
+    if args.t > os.cpu_count():
+        logger.warning(f'number of threads exceeds available CPUs')
+        threads = str(os.cpu_count())
+    logger.info(f'using {threads} threads')
     start = time()
     logger.info(f'genefinda {__version__}')
     logger.info(f'your system is {os.uname()[0]}')
@@ -183,12 +188,6 @@ def main():
     ### Main program ###
     else:
         # Sanity Checks
-        if args.q: logger.setLevel(logging.ERROR)
-        threads = str(args.t)
-        if args.t > os.cpu_count():
-            logger.warning(f'number of threads exceeds available CPUs')
-            threads = str(os.cpu_count())
-        logger.info(f'using {threads} threads')
         ref = f'{db_path}/refseq_sketches_21_1000.sk'
         if not os.path.isfile(ref):
             logger.warning(f'{ref} not found')
@@ -275,7 +274,9 @@ def main():
                     logger.info(f'{len(scheme_match[1])} close matches found')
 
                 for st in scheme_match[1]:
-                    print(f'ST{st} ({int(scheme_match[0]*100)}% profile match)')
+                    o = [sample]
+
+                    print(*o, sep="\t")
 
     logger.info(f'completed in {"{:.1f}".format(time() - start)} seconds')
 
