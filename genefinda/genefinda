@@ -12,21 +12,24 @@ import logging
 from json import loads
 from subprocess import Popen, PIPE, run, DEVNULL
 from requests import get
-import pandas as pd
+import csv
+
+
 from genefinda.version import __version__
 
 ### Globals ###
 bin_path = os.path.dirname(__file__)
 db_path = f'{os.path.dirname(bin_path)}/db'
 logger = logging.getLogger('root')
-logging.basicConfig(format="[%(filename)s | %(funcName)s] %(message)s")
+logging.basicConfig(format="[%(funcName)s] %(message)s")
 logger.setLevel(logging.DEBUG)
-
 
 def parse_args():
     parser = ArgumentParser(add_help=False, usage="genefinda reads_1.fq.gz reads_2.fq.gz [options]")
     parser.add_argument('input', nargs='+', type=Path, help='Paired-end fastq(.gz)')
-    parser.add_argument('-t', type=int, default='4', help='threads')
+    parser.add_argument('-t', type=int, default=4, help='threads')
+    parser.add_argument('-q', action='store_true', default=False, help='stfu unless emergency')
+    parser.add_argument('--percid', type=int, default=90, help='percid')
     parser.add_argument("-h", action="help", help='show this help message and exit')
     args = parser.parse_args()
     return args
@@ -78,8 +81,7 @@ def info(sketch):
     logger.info(f'{" ".join(cmd)}')
     child = Popen(cmd, stdout=PIPE)
     r = child.communicate()[0].decode('utf-8').split('\n')
-    kmers = r[1].split(': ')[1]
-    depth = r[2].split(': ')[1]
+    kmers, depth = r[1].split(': ')[1], r[2].split(': ')[1]
     gc = r[3].split(': ')[1].strip('%')
     logger.info(f'{"{:.1f}".format(int(kmers)/1000000)}Mbp genome, '
                 f'{depth} average depth, '
@@ -94,6 +96,7 @@ def dist(sketch, ref):
     r = loads(child.communicate()[0])
     return sorted(r, key=lambda k: k['mashDistance'])[:2]
 
+
 def index(infile, outfile):
     cmd = ['kma', 'index', '-i', '--', '-o', outfile]
     logger.info(f'{" ".join(cmd)}')
@@ -103,12 +106,14 @@ def index(infile, outfile):
 
 
 def ipe(reads, outfile, percid, scheme, threads):
-    cmd = ['kma', '-ipe', reads[0], reads[1], '-ID', percid, #'-1t1',
+    cmd = ['kma', '-ipe', reads[0], reads[1], '-ID', percid,
+           '-1t1',
+           #'-mrs', '90',
+           '-apm', 'p',
            '-o', outfile, '-t_db', scheme, '-t', threads]
-    # -na -nf -bc90 -mct 0
+
     logger.info(f'{" ".join(cmd)}')
-    child = Popen(cmd, stderr=DEVNULL)
-    return child.communicate()
+    return Popen(cmd, stderr=DEVNULL).communicate()
 
 
 def build_indexes(d):  # builds kma index for each scheme in dictionary
@@ -122,11 +127,12 @@ def build_indexes(d):  # builds kma index for each scheme in dictionary
 
 
 def build_tab(d):  # builds kma index for each scheme in dictionary
+    [f.unlink() for f in Path(f'{db_path}/mapping/').glob("*") if f.is_file()]
     for k, v in d.items():
         for url in v:
             if 'csv' in url:
                 logger.info(f'downloading {url}')
-                with open(f'{db_path}/mapping/{k}.tab', 'wb') as f:
+                with open(f'{db_path}/mapping/{k}.tab', 'ab') as f:
                     f.write(get(url).content)
                 logger.info(f'written to {db_path}/mapping/{k}.tab')
 
@@ -135,28 +141,30 @@ def choose_scheme(finch_out):  # chooses best scheme based on finch containment
     d = {}
     with open(f'{db_path}/mapping.csv') as f:
         for line in f:
-            d[line.split(',')[1]] = line.split(',')[0]
-    match = get_close_matches(finch_out, list(d))[0]
-    return d[match]
+            d[line.split(',')[1].strip('\n')] = line.split(',')[0]
+    matches = get_close_matches(finch_out.split(' ')[0], list(d))
+    if len(matches) > 1:
+        logger.info("refining genus string search to species")
+        matches = get_close_matches(finch_out, list(d))
+    if len(matches) > 1:
+        logger.warning(f"{len(matches)} schemes for this species, reporting all")
+    logger.info(' '.join(matches))
+    return d[matches[0]]
 
 
 def main():
+    args = parse_args()
     ### Ok, lets go ###
     start = time()
     logger.info(f'genefinda {__version__}')
     logger.info(f'your system is {os.uname()[0]}')
     if 'Linux' not in os.uname()[0]:
         logger.warning(f'genefinda has not been tested on {os.uname()[0]}')
-
-    #formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-
     logger.info(f'cwd is {os.getcwd()}')
-    #logger.info(f'bin path is {bin_path}')
+    #ogger.info(f'bin path is {bin_path}')
     #logger.info(f'db path is {db_path}')
-    args = parse_args()
 
-    ### Inbuilt scheme index builder ###
-
+    ### Inbuilt scheme index builders ###
     if f'{str(args.input[0])} {str(args.input[1])}' == 'update indexes':
         logger.info(f'building scheme fasta indexes')
         build_indexes(pubmlst_dict())
@@ -172,16 +180,15 @@ def main():
         pubmlst_map()
         exit(logger.info(f'completed in {"{:.1f}".format(time() - start)} seconds'))
 
-    ### Run main program ###
+    ### Main program ###
     else:
-        ### Sanity Checks ###
-
+        # Sanity Checks
+        if args.q: logger.setLevel(logging.ERROR)
         threads = str(args.t)
         if args.t > os.cpu_count():
             logger.warning(f'number of threads exceeds available CPUs')
             threads = str(os.cpu_count())
         logger.info(f'using {threads} threads')
-
         ref = f'{db_path}/refseq_sketches_21_1000.sk'
         if not os.path.isfile(ref):
             logger.warning(f'{ref} not found')
@@ -206,14 +213,14 @@ def main():
                     logger.error(f'{i} is not a fastq file')
 
         ### Loop over read-pair dict ###
-        for name in pairs.keys():
+        for name in list(pairs):
             sample = os.path.basename(name)
             logger.info(f'read pair for {sample}: {" ".join(pairs[name])}')
-            sketch = f'{name}.sk'
+            sketch = f'/tmp/{sample}.sk'
             if not os.path.isfile(sketch):
-                logger.info(f'read pair for {sample}: {" ".join(pairs[name])}')
                 sketch_input(pairs[name], sketch)
             info(sketch)
+
             finch = dist(sketch, ref)
             s1 = finch[0]["reference"]
             logger.info(f'closest refseq genome is {s1}')
@@ -221,14 +228,55 @@ def main():
             # logger.info(f'second-closest refseq genome is {s2}')
             scheme = choose_scheme(s1)
             logger.info(f'choosing scheme: {scheme}')
-            ipe(pairs[name], f'{name}', '90', f'{db_path}/indexes/{scheme}', threads)
-            df = pd.read_csv(f'{name}.res', delimiter='\t')
-            df[['#Template', 'allele']] = df['#Template'].str.split('_', expand=True)
-            df = df[df.groupby(['#Template'])['q_value'].transform(max) == df['q_value']]
-            df = df.set_index('#Template').T.astype(int)
-            df1 = pd.read_csv(f'{db_path}/mapping/{scheme}.tab', delimiter='\t', index_col=False)
-            mlst = df1.merge(df, on=list(df.columns.intersection(df1.columns)), how='inner')
-            print(mlst.to_csv(sep='\t', index=False))
+            ipe(pairs[name], f'/tmp/{sample}', str(args.percid),
+                f'{db_path}/indexes/{scheme}', threads)
+
+            with open(f'/tmp/{sample}.res', newline='\n') as res:
+                r = res.read().splitlines()
+                resdict = {}
+                for line in r[1:]:
+                    v = line.split('\t')
+                    v = [x.strip(' ') for x in v]
+                    k = v[0].rsplit('_', 1)[0]
+                    v[0] = v[0].rsplit('_', 1)[1]
+                    if k in list(resdict):
+                        if int(v[1]) > int(resdict[k][1]):
+                            resdict[k] = v
+                    else:
+                        resdict[k] = v
+
+                # allele, Score, Expected, Template_length, Template_Identity, Template_Coverage, Query_Identity, Query_Coverage, Depth, q_value, p_value
+
+            with open(f'{db_path}/mapping/{scheme}.tab') as file:
+                p = ['ST'+ r for r in file.read().split('ST')[1:]]
+
+            # iterate if multiple schemes
+            for s in p:
+                scheme_dict, headers = {}, s.split('\n', 1)[0].split('\t')[1:]
+                for line in s.splitlines()[1:]:
+                    v = line.split('\t')
+                    scheme_dict[int(v[0])] = {headers[i]: v[1:][i] for i in range(len(headers))}
+                genes = [g for g in headers if g not in ['clonal_complex', 'species']]
+                y = []
+                for k, v in resdict.items():
+                    if k in genes:
+                        y.append(v[0])
+
+                scheme_match = defaultdict(list)
+                for st in scheme_dict.keys():
+                    profile = []
+                    for k, v in scheme_dict[st].items():
+                        if k in resdict.keys() & genes:
+                            profile.append(v)
+                    scheme_match[SequenceMatcher(None, profile, y).ratio()].append(st)
+
+                scheme_match = sorted(scheme_match.items(), key=lambda item: item[0], reverse=True)[0]
+
+                if len(scheme_match[1]) > 1:
+                    logger.info(f'{len(scheme_match[1])} close matches found')
+
+                for st in scheme_match[1]:
+                    print(f'ST{st} ({int(scheme_match[0]*100)}% profile match)')
 
     logger.info(f'completed in {"{:.1f}".format(time() - start)} seconds')
 
