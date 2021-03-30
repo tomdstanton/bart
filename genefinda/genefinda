@@ -88,15 +88,15 @@ def main():
                 logger.error(f'{i} is not a fastq file')
 
     ### Loop over read-pair dict ###
-    for prefix in list(pairs):
-        sample = os.path.basename(prefix)
-        logger.info(f'read pair for {sample}: {" ".join(pairs[prefix])}')
+    for name in list(pairs):
+        sample = os.path.basename(name)
+        logger.info(f'read pair for {sample}: {" ".join(pairs[name])}')
 
         if not args.amr and args.use_scheme is None:
             sketch = f'/tmp/{sample}.sk'
             if not os.path.isfile(sketch):
                 from genefinda.bin.finch import sketch_input
-                sketch_input(pairs[prefix], sketch)
+                sketch_input(pairs[name], sketch)
             from genefinda.bin.finch import dist
             from genefinda.bin.mlst import choose_scheme
             scheme = choose_scheme(dist(sketch, db_path), db_path)
@@ -105,7 +105,7 @@ def main():
             sketch = f'/tmp/{sample}.sk'
             if not os.path.isfile(sketch):
                 from genefinda.bin.finch import sketch_input
-                sketch_input(pairs[prefix], sketch)
+                sketch_input(pairs[name], sketch)
             from genefinda.bin.finch import info
             x = info(sketch)
             print(f'genome_size({x[0]})\tave_depth({x[1]})\tgc({x[2]})')
@@ -115,17 +115,17 @@ def main():
         if args.mlst:
             from genefinda.bin.kma import ipe
             if args.use_scheme is not None:
-                if not args.use_scheme in [f.prefix.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
+                if not args.use_scheme in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
                     exit(logger.error(f'{args.use_scheme} not a valid scheme, use --schemes to see valid schemes'))
                 else: scheme = args.use_scheme
-            ipe(pairs[prefix], f'/tmp/{sample}', str(args.percid),
+            ipe(pairs[name], f'/tmp/{sample}', str(args.percid),
                f'{db_path}/indexes/{scheme}', threads)
             from genefinda.bin.mlst import match_profile
             print(*match_profile(sample,scheme,db_path), sep='\t')
 
         if args.amr:
             from genefinda.bin.kma import ipe
-            ipe(pairs[prefix], f'/tmp/{sample}', str(args.percid),
+            ipe(pairs[name], f'/tmp/{sample}', str(args.percid),
                 f'{db_path}/indexes/amr', threads)
             with open(f'/tmp/{sample}.res', newline='\n') as res:
                 print(res)
