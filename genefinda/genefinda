@@ -8,11 +8,11 @@ import os
 from pathlib import Path
 from time import time
 import logging
-from genefinda.version import __version__
+from bart.version import __version__
 
 
 def parse_args():
-    parser = ArgumentParser(add_help=False, usage="genefinda *.fq.gz [options]")
+    parser = ArgumentParser(add_help=False, usage="bart *.fq.gz [options]")
     parser.add_argument('-i', nargs='+', type=Path, help='Paired-end fastq(.gz)')
     parser.add_argument('-t', type=int, default=4, help='threads')
     parser.add_argument('-q', action='store_true', default=False, help='shhh')
@@ -40,27 +40,27 @@ def main():
     args = parse_args()
     if args.q: logger.setLevel(logging.ERROR)
     start = time()
-    logger.info(f'genefinda {__version__}')
+    logger.info(f'bart {__version__}')
     logger.info(f'your system is {os.uname()[0]}')
     if 'Linux' not in os.uname()[0]:
-        logger.warning(f'genefinda has not been tested on {os.uname()[0]}')
+        logger.warning(f'bart has not been tested on {os.uname()[0]}')
     logger.info(f'cwd is {os.getcwd()}')
 
 
     if 'mlst' in args.update:
-        from genefinda.bin.mlst import update_db
+        from bart.bin.mlst import update_db
         logger.info(f'building scheme fasta indexes')
         update_db(db_path)
         exit(logger.info(f'completed in {"{:.1f}".format(time() - start)} seconds'))
 
     if 'amr' in args.update:
-        from genefinda.bin.amr import update_db
+        from bart.bin.amr import update_db
         logger.info(f'building amr gene index')
         update_db(db_path)
         exit(logger.info(f'completed in {"{:.1f}".format(time() - start)} seconds'))
 
     if args.schemes:
-        from genefinda.bin.mlst import print_schemes
+        from bart.bin.mlst import print_schemes
         exit(print_schemes(db_path))
 
     ### Check input filetypes and create read-pair dict ###
@@ -95,36 +95,36 @@ def main():
         if not args.amr and args.use_scheme is None:
             sketch = f'/tmp/{sample}.sk'
             if not os.path.isfile(sketch):
-                from genefinda.bin.finch import sketch_input
+                from bart.bin.finch import sketch_input
                 sketch_input(pairs[name], sketch)
-            from genefinda.bin.finch import dist
-            from genefinda.bin.mlst import choose_scheme
+            from bart.bin.finch import dist
+            from bart.bin.mlst import choose_scheme
             scheme = choose_scheme(dist(sketch, db_path), db_path)
 
         if args.info:
             sketch = f'/tmp/{sample}.sk'
             if not os.path.isfile(sketch):
-                from genefinda.bin.finch import sketch_input
+                from bart.bin.finch import sketch_input
                 sketch_input(pairs[name], sketch)
-            from genefinda.bin.finch import info
+            from bart.bin.finch import info
             x = info(sketch)
             print(f'genome_size({x[0]})\tave_depth({x[1]})\tgc({x[2]})')
             logger.info(f'{"{:.1f}".format(int(x[0]) / 1000000)}Mbp genome, '
                         f'{x[1]} average depth, {"{:.1f}".format(float(x[2]))}% GC')
 
         if args.mlst:
-            from genefinda.bin.kma import ipe
+            from bart.bin.kma import ipe
             if args.use_scheme is not None:
                 if not args.use_scheme in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
                     exit(logger.error(f'{args.use_scheme} not a valid scheme, use --schemes to see valid schemes'))
                 else: scheme = args.use_scheme
             ipe(pairs[name], f'/tmp/{sample}', str(args.percid),
                f'{db_path}/indexes/{scheme}', threads)
-            from genefinda.bin.mlst import match_profile
+            from bart.bin.mlst import match_profile
             print(*match_profile(sample,scheme,db_path), sep='\t')
 
         if args.amr:
-            from genefinda.bin.kma import ipe
+            from bart.bin.kma import ipe
             ipe(pairs[name], f'/tmp/{sample}', str(args.percid),
                 f'{db_path}/indexes/amr', threads)
             with open(f'/tmp/{sample}.res', newline='\n') as res:

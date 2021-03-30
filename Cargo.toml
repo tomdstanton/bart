@@ -1,10 +1,10 @@
 [package]
-name = "genefinda"
+name = "bart"
 version = "0.0.1"
 authors = ["Tom Stanton <tomdstanton@gmail.com>"]
 edition = "2021"
 readme = "README.md"
-homepage = "https://github.com/tomdstanton/genefinda"
+homepage = "https://github.com/tomdstanton/bart"
 keywords = ["bacterial-genome-analysis", "bioinformatics"]
 
 [dependencies]
