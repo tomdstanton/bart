@@ -48,19 +48,19 @@ def main():
 
 
     if 'mlst' in args.update:
-        from genefinda.methods.mlst import update_db
+        from genefinda.bin.mlst import update_db
         logger.info(f'building scheme fasta indexes')
         update_db(db_path)
         exit(logger.info(f'completed in {"{:.1f}".format(time() - start)} seconds'))
 
     if 'amr' in args.update:
-        from genefinda.methods.amr import update_db
+        from genefinda.bin.amr import update_db
         logger.info(f'building amr gene index')
         update_db(db_path)
         exit(logger.info(f'completed in {"{:.1f}".format(time() - start)} seconds'))
 
     if args.schemes:
-        from genefinda.methods.mlst import print_schemes
+        from genefinda.bin.mlst import print_schemes
         exit(print_schemes(db_path))
 
     ### Check input filetypes and create read-pair dict ###
@@ -88,44 +88,44 @@ def main():
                 logger.error(f'{i} is not a fastq file')
 
     ### Loop over read-pair dict ###
-    for name in list(pairs):
-        sample = os.path.basename(name)
-        logger.info(f'read pair for {sample}: {" ".join(pairs[name])}')
+    for prefix in list(pairs):
+        sample = os.path.basename(prefix)
+        logger.info(f'read pair for {sample}: {" ".join(pairs[prefix])}')
 
         if not args.amr and args.use_scheme is None:
             sketch = f'/tmp/{sample}.sk'
             if not os.path.isfile(sketch):
-                from genefinda.methods.finch import sketch_input
-                sketch_input(pairs[name], sketch)
-            from genefinda.methods.finch import dist
-            from genefinda.methods.mlst import choose_scheme
+                from genefinda.bin.finch import sketch_input
+                sketch_input(pairs[prefix], sketch)
+            from genefinda.bin.finch import dist
+            from genefinda.bin.mlst import choose_scheme
             scheme = choose_scheme(dist(sketch, db_path), db_path)
 
         if args.info:
             sketch = f'/tmp/{sample}.sk'
             if not os.path.isfile(sketch):
-                from genefinda.methods.finch import sketch_input
-                sketch_input(pairs[name], sketch)
-            from genefinda.methods.finch import info
+                from genefinda.bin.finch import sketch_input
+                sketch_input(pairs[prefix], sketch)
+            from genefinda.bin.finch import info
             x = info(sketch)
             print(f'genome_size({x[0]})\tave_depth({x[1]})\tgc({x[2]})')
             logger.info(f'{"{:.1f}".format(int(x[0]) / 1000000)}Mbp genome, '
                         f'{x[1]} average depth, {"{:.1f}".format(float(x[2]))}% GC')
 
         if args.mlst:
-            from genefinda.methods.kma import ipe
+            from genefinda.bin.kma import ipe
             if args.use_scheme is not None:
-                if not args.use_scheme in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
+                if not args.use_scheme in [f.prefix.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
                     exit(logger.error(f'{args.use_scheme} not a valid scheme, use --schemes to see valid schemes'))
                 else: scheme = args.use_scheme
-            ipe(pairs[name], f'/tmp/{sample}', str(args.percid),
+            ipe(pairs[prefix], f'/tmp/{sample}', str(args.percid),
                f'{db_path}/indexes/{scheme}', threads)
-            from genefinda.methods.mlst import match_profile
+            from genefinda.bin.mlst import match_profile
             print(*match_profile(sample,scheme,db_path), sep='\t')
 
         if args.amr:
-            from genefinda.methods.kma import ipe
-            ipe(pairs[name], f'/tmp/{sample}', str(args.percid),
+            from genefinda.bin.kma import ipe
+            ipe(pairs[prefix], f'/tmp/{sample}', str(args.percid),
                 f'{db_path}/indexes/amr', threads)
             with open(f'/tmp/{sample}.res', newline='\n') as res:
                 print(res)

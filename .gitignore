@@ -1,7 +1,11 @@
 /tests/*.fastq.gz
 packaging_info.txt
-/db/kma_index
+/db/indexes/*
+/db/mapping/*
+/genefinda/bin/*.rs
+/genefinda/bin/Fq_utils.py
+/genefinda/bin/readfq.py
 /db/refseq_sketches_21_1000.sk
-/genefinda.egg-info/
 /genefinda/debug.log
 notes.txt
+genefinda.code-workspace
