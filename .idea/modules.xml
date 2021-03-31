@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/genefinda.iml" filepath="$PROJECT_DIR$/.idea/genefinda.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../bart/.idea/bart.iml" filepath="$PROJECT_DIR$/../bart/.idea/bart.iml" />
     </modules>
   </component>
 </project>
