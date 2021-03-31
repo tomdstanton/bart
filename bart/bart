@@ -54,7 +54,9 @@ def main():
 
     if args.bart:
         with open(f"{bin_path}/bart_ascii.txt") as f:
-            print(f.read)
+            exit(print(f'''{f.read()}
+
+            {random.choice(["eat my shorts!", "don't have a cow, man!", "i didn't do it.", "ay caramba!"])}'''))
 
     if args.q:
         logger.setLevel(logging.ERROR)
