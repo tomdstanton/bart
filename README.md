@@ -42,22 +42,25 @@ python setup.py install
 ### Usage ###
 Before first use, run this quick command to
 index the latest MLST schemes from PubMLST: \
-```bart --update mlst```
-
-Now you can run: \
-```bart -i read_1.fq.gz read_2.fq.gz --mlst```
-
+```
+bart --update mlst
+```
+Now you can run:
+```
+bart -i read_1.fq.gz read_2.fq.gz --mlst
+```
 It's easy to run MLST on a bunch of 
 input reads and pipe the results to 
 a tabular file for downstream usage. Just suppress
-output with the quiet flag and you're golden. \
-```bart -i *paired_reads.fq.gz --mlst -q >> mlst.tab```
-
-Alternativley, if you know the species of your reads
-or the specific scheme you would like to use, run
-```bart --schemes``` to see if it's included.
-You can speed up the analysis by specifying your chosen
-scheme:
+output with the quiet flag and you're golden.
+```
+bart -i *.fq.gz --mlst -q >> mlst.tab
+```
+Alternatively, if you know the species of your reads
+or the specific scheme you would like to use, you can speed 
+up the analysis.
+First run```bart --schemes```to see if it's included, now
+you can run:
 ```
 bart -i *.fq.gz --mlst --use_scheme Acinetobacter_baumannii#2
 ```
