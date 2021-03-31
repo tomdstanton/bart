@@ -4,31 +4,7 @@
 from difflib import SequenceMatcher, get_close_matches
 from collections import defaultdict
 from os import scandir
-from re import DOTALL, findall
-from requests import get
 import logging
-
-def update_db(db_path):
-    from .kma import index
-    logger = logging.getLogger('root')
-    # [f.unlink() for f in Path(f'{db_path}/mapping/').glob("*") if f.is_file()]
-    for s in findall('<species>(.*?)</species>',
-                     get('https://pubmlst.org/static/data/dbases.xml').text, DOTALL):
-        scheme = s.split('\n')
-        name = scheme[0].replace(' ','_').replace('/','_').strip('.')
-        urls = []
-        for l in scheme:
-            if any(ft in l for ft in ['csv', 'fasta']):
-                urls.append(l.split('>')[1].split('<')[0])
-
-        with open(f'{db_path}/mapping/{name}.tab', 'ab') as f:
-            f.write(get(urls[0]).content)
-        logger.info(f'written scheme map to {db_path}/mapping/{name}.tab')
-        i = ''
-        for url in urls[1:]:
-            i += get(url).text
-        index(i, f'{db_path}/indexes/{name}')
-
 
 def choose_scheme(finch_out, db_path):
     logger = logging.getLogger('root')
@@ -118,6 +94,3 @@ def match_profile(sample, scheme, db_path):
 
 
 
-def print_schemes(db_path):
-    d = [f.name.split('.')[0] for f in scandir(f'{db_path}/mapping/')]
-    return print(*sorted(d), sep="\n")
