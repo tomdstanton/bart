@@ -1,5 +1,5 @@
 # bart
-###### Not-slow bacterial read typer
+###### ba(cterial) r(ead) t(yper)
 _By Tom Stanton_ \
 Schneiders Lab - University of Edinburgh
 
@@ -23,7 +23,9 @@ You can also ue bart to get genome metrics of your reads
 such as estimated size, coverage, %GC and species containment.
 
 **Please cite:**
-```bart, Thomas David Stanton, 2021
+```
+bart - ba(cterial) r(ead) t(yper)
+Thomas David Stanton, 2021
 https://github.com/tomdstanton/bart
 ```
 ### Dependencies
@@ -64,6 +66,7 @@ you can run:
 ```
 bart -i *.fq.gz --mlst --use_scheme Acinetobacter_baumannii#2
 ```
-
 Currently only works on paired-end reads. Support for
 single-end and long reads is coming...
+
+![Image](https://github.com/tomdstanton/bart/blob/master/Bart_Simpson_200px.png)
