@@ -1,5 +1,6 @@
-# bart
-###### ba(cterial) r(ead) t(yper)
+# ba(cterial) r(ead) t(yper)
+![Image](https://github.com/tomdstanton/bart/blob/master/Bart_Simpson_200px.png)
+
 _By Tom Stanton_ \
 Schneiders Lab - University of Edinburgh
 
@@ -68,5 +69,3 @@ bart -i *.fq.gz --mlst --use_scheme Acinetobacter_baumannii#2
 ```
 Currently only works on paired-end reads. Support for
 single-end and long reads is coming.
-
-![Image](https://github.com/tomdstanton/bart/blob/master/Bart_Simpson_200px.png)
