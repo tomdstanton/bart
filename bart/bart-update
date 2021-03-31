@@ -5,9 +5,9 @@ from argparse import ArgumentParser
 import os
 from re import DOTALL, findall
 from requests import get
-import random
-from time import time
+from pathlib import Path
 import logging
+import asyncio
 from sys import version_info, platform
 from bart.version import __version__
 from bart.bin.kma import index
@@ -36,16 +36,18 @@ def main():
     logger.setLevel(logging.DEBUG)
 
     args = parse_args()
-    start = time()
 
     logger.info(f'this is bart {__version__} by {__author__}')
     logger.info(f'running on {platform} with Python {str(version_info[:3])[1:-1].replace(", ", ".")}')
 
     if 'mlst' in args.update:
-        # [f.unlink() for f in Path(f'{db_path}/mapping/').glob("*") if f.is_file()]
-        for s in findall('<species>(.*?)</species>',
-                         get('https://pubmlst.org/static/data/dbases.xml').text, DOTALL):
+        def background(f):
+            def wrapped(*args, **kwargs):
+                return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
+            return wrapped
 
+        @background
+        def build_mlst(s):
             scheme, urls = s.split('\n'), []
             name = scheme[0].replace(' ', '_').replace('/', '_').strip('.')
             for l in scheme:
@@ -60,14 +62,16 @@ def main():
                 i += get(url).text
             index(i, f'{db_path}/indexes/{name}')
 
+
+        [f.unlink() for f in Path(f'{db_path}/mapping/').glob("*") if f.is_file()]
+        for species in findall('<species>(.*?)</species>', get('https://pubmlst.org/static/data/dbases.xml').text, DOTALL):
+            build_mlst(species)
+
+
     if 'amr' in args.update:
         url = 'https://ftp.ncbi.nlm.nih.gov/pathogen/Antimicrobial_resistance/AMRFinderPlus/database/latest/AMR_CDS'
         logger.info(f'indexing {url}')
         index(get(url).text, f'{db_path}/indexes/amr')
-
-    logger.info(f'completed in {"{:.1f}".format(time() - start)} seconds')
-    logger.info(random.choice(["eat my shorts!", "don't have a cow, man!", "i didn't do it.", "ay caramba!"]))
-
 
 if __name__ == '__main__':
     main()
