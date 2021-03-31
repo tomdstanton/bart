@@ -30,6 +30,7 @@ def parse_args():
     #parser.add_argument('--species', action='store_true', default=False, help='print species only')
     parser.add_argument('--mlst', action='store_true', default=False, help='run mlst')
     parser.add_argument('--schemes', action='store_true', default=False, help='print available MLST schemes')
+    parser.add_argument('--bart', action='store_true', default=False, help='eat my shorts!')
     parser.add_argument('--use_scheme', metavar='scheme', nargs='?', type=str, const='',
                         help='no containment-aided scheme choice and forces scheme')
     parser.add_argument('--amr', action='store_true', default=False, help='amr gene detection')
@@ -50,6 +51,10 @@ def main():
     if args.schemes:
         d = [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]
         exit(print(*sorted(d), sep="\n"))
+
+    if args.bart:
+        with open(f"{bin_path}/bart_ascii.txt") as f:
+            print(f.read)
 
     if args.q:
         logger.setLevel(logging.ERROR)
@@ -104,7 +109,6 @@ def main():
                 sketch_input(pairs[name], sketch)
             from bart.bin.finch import info
             x = info(sketch)
-            print(f'genome_size({x[0]})\tave_depth({x[1]})\tgc({x[2]})')
             logger.info(f'{"{:.1f}".format(int(x[0]) / 1000000)}Mbp genome, '
                         f'{x[1]} average depth, {"{:.1f}".format(float(x[2]))}% GC')
 

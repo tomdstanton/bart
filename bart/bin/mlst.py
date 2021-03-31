@@ -60,6 +60,8 @@ def match_profile(sample, scheme, db_path):
     for k, v in res_dict.items():
         if v[4] == '100.00' and v[5] == '100.00':
             exact.append(k)
+        else:
+            logger.info(f'potential novel allele for {k}')
 
     for i in exact:
         for st in list(scheme_dict.keys()):
@@ -68,6 +70,8 @@ def match_profile(sample, scheme, db_path):
                 scheme_dict.pop(st)
 
     if len(scheme_dict.keys()) > 1:
+        logger.info(f'no exact profile match, finding closest')
+
         scheme_match = defaultdict(list)
         for st in scheme_dict.keys():
             profile = []
@@ -75,7 +79,10 @@ def match_profile(sample, scheme, db_path):
                 if k in res_dict.keys() & genes:
                     profile.append(v)
             scheme_match[SequenceMatcher(None, profile, y).ratio()].append(st)
+
+        # Invert the dictionary so match scores are keys and sort by key to take best ST match
         scheme_match = sorted(scheme_match.items(), key=lambda item: item[0], reverse=True)[0]
+
         if len(scheme_match[1]) > 1:
             logger.info(f'{len(scheme_match[1])} close matches found')
         sts = scheme_match[1]
@@ -90,6 +97,7 @@ def match_profile(sample, scheme, db_path):
                 if  v != '':
                     out.append(f'{k}({v})')
             else: out.append(f'{k} no hit')
+
     return out
 
 
