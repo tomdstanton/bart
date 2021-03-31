@@ -30,10 +30,10 @@ setup(
         "Operating System :: Linux",
     ],
     packages=find_packages(),
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     include_package_data = True,
-    package_data={'bart': ['bart/db/scheme_species_map.tab']},
-    scripts=['bart/bart'],
+    #package_data={'bart': ['bart/db/scheme_species_map.tab']},
+    scripts=['bart/bart','bart/baart-update'],
     keywords='microbial genomics amr virulence',
     install_requires=requirements,
     zip_safe=False
