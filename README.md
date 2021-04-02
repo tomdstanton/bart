@@ -4,13 +4,9 @@
 ![Image](https://github.com/tomdstanton/bart/blob/master/Bart_Simpson_200px.png)
 
 _By Tom Stanton_ \
-University of Edinburgh
-
+[![alt text][1.1]][1] [![alt text][6.1]][6] \
 Issues/queries/advice?
 [email me!](mailto:s1895738@ed.ac.uk?subject=[bart])
-
-[![alt text][1.1]][1]
-[![alt text][6.1]][6]
 
 [1]: http://twitter.com/tomstantonmicro
 [1.1]: http://i.imgur.com/tXSoThF.png (twitter icon with padding)
