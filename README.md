@@ -1,10 +1,10 @@
 # bart
-######BActerial Read Typer
+**ba**cterial **r**ead **t**yper
 
 ![Image](https://github.com/tomdstanton/bart/blob/master/Bart_Simpson_200px.png)
 
 _By Tom Stanton_ \
-Schneiders Lab - University of Edinburgh
+University of Edinburgh
 
 Issues/queries/advice?
 [email me!](mailto:s1895738@ed.ac.uk?subject=[bart])
