@@ -21,10 +21,10 @@ __status__ = "Development"
 
 def parse_args():
     parser = ArgumentParser(add_help=False, usage="bart-update [options]")
-    parser.add_argument('--schemes', action='store_true', default=False, help='print available MLST schemes')
-    parser.add_argument('--pubmlst', action='store_true', default=False, help='update pubMLST schemes')
-    parser.add_argument('--add-scheme', nargs='*', type=Path, help='path to custom scheme fasta and csv')
-    parser.add_argument('--remove-scheme', type=str, nargs='?', help='name of scheme(s) to remove')
+    parser.add_argument('-s', '--schemes', action='store_true', default=False, help='print available MLST schemes')
+    parser.add_argument('-p', '--pubmlst', action='store_true', default=False, help='update pubMLST schemes')
+    parser.add_argument('-a', '--add', nargs='*', type=Path, help='path to custom scheme fasta and csv')
+    parser.add_argument('-r', '--remove', type=str, nargs='*', help='name of scheme(s) to remove')
     parser.add_argument("-h", action="help", help='show this help message and exit')
     args = parser.parse_args()
     return args
@@ -46,10 +46,10 @@ def main():
     logger.info(f'this is bart {__version__} by {__author__}')
     logger.info(f'running on {platform} with Python {str(version_info[:3])[1:-1].replace(", ", ".")}')
 
-    if args.add_scheme:
+    if args.add:
         names = []
-        logger.info(f'adding scheme from: {str(args.add_scheme)}')
-        for i in args.add_scheme:
+        logger.info(f'adding scheme from: {str(args.add)}')
+        for i in args.add:
             if os.path.isfile(i):
                 names.append(os.path.basename(i).split('.', -1)[0])
                 with open(i, 'rb') as fh:
@@ -71,35 +71,38 @@ def main():
         copyfile(mapping, f'{db_path}/mapping/{names[0]}.tab')
         index(fasta, f'{db_path}/indexes/{names[0]}')
 
-    if args.remove_scheme:
-        name = ''
-        logger.info(f'removed {name}')
+    if args.remove:
+        for name in args.remove:
+            logger.info(f'removing {db_path}/mapping/{name}.tab')
+            os.remove(f'{db_path}/mapping/{name}.tab')
+            for i in ['.comp.b', '.seq.b', '.length.b', '.name']:
+                logger.info(f'removing {db_path}/indexes/{name}{i}')
+                os.remove(f'{db_path}/indexes/{name}{i}')
 
     if args.pubmlst:
-        if 'mlst' in args.db:
-            def background(f):
-                def wrapped(*args, **kwargs):
-                    return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
-                return wrapped
+        def background(f):
+            def wrapped(*args, **kwargs):
+                return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
+            return wrapped
 
-            @background
-            def build_mlst(s):
-                scheme, urls = s.split('\n'), []
-                name = scheme[0].replace(' ', '_').replace('/', '_').strip('.')
-                for l in scheme:
-                    if any(ft in l for ft in ['csv', 'fasta']):
-                        urls.append(l.split('>')[1].split('<')[0])
-                with open(f'{db_path}/mapping/{name}.tab', 'ab') as f:
-                    f.write(get(urls[0]).content)
-                logger.info(f'written scheme map to {db_path}/mapping/{name}.tab')
-                i = ''
-                for url in urls[1:]:
-                    i += get(url).text
-                index(i, f'{db_path}/indexes/{name}')
+        @background
+        def build_mlst(s):
+            scheme, urls = s.split('\n'), []
+            name = scheme[0].replace(' ', '_').replace('/', '_').strip('.')
+            for l in scheme:
+                if any(ft in l for ft in ['csv', 'fasta']):
+                    urls.append(l.split('>')[1].split('<')[0])
+            with open(f'{db_path}/mapping/{name}.tab', 'ab') as f:
+                f.write(get(urls[0]).content)
+            logger.info(f'written scheme map to {db_path}/mapping/{name}.tab')
+            i = ''
+            for url in urls[1:]:
+                i += get(url).text
+            index(i, f'{db_path}/indexes/{name}')
 
-            [f.unlink() for f in Path(f'{db_path}/mapping/').glob("*") if f.is_file()]
-            for species in findall('<species>(.*?)</species>', get('https://pubmlst.org/static/data/dbases.xml').text, DOTALL):
-                build_mlst(species)
+        [f.unlink() for f in Path(f'{db_path}/mapping/').glob("*") if f.is_file()]
+        for species in findall('<species>(.*?)</species>', get('https://pubmlst.org/static/data/dbases.xml').text, DOTALL):
+            build_mlst(species)
 
         # if 'amr' in args.db:
         #     url = 'https://ftp.ncbi.nlm.nih.gov/pathogen/Antimicrobial_resistance/AMRFinderPlus/database/latest/AMR_CDS'

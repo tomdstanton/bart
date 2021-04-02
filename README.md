@@ -64,6 +64,21 @@ This took 4 seconds on a 4-core laptop.
 |-------------|------------------------|-----|------|------|-----|------|-----|-----|------|------|---------| 
 | SRR14091226 | Listeria_monocytogenes | 451 | 7    | 5    | 10  | 21   | 1   | 4   | 1    | CC11 | II      |
 
+### bart-update
+The ```bart-update``` script handles the scheme manipulation and has several options:
+* ```-s``` prints all available MLST schemes in database
+* ```-p``` indexes all schemes from pubmlst (this sounds slow but takes <1 min)
+* ```-a``` adds a custom scheme from a fasta and tab mapping file
+* ```-r``` removes the listed schemes in the database
+
+
+Sometimes there are 2 schemes for a species which is problematic because
+the heuristics will pick the same one every time. For A. baumannii,
+I don't want the Oxford  scheme to be considered, so I simply run:
+```
+bart-update -r Acinetobacter_baumannii#1
+```
+
 **Bugs / issues / development:**
 * Currently only works on paired-end reads. Support for
 single-end and long reads is coming.
