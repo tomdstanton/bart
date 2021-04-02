@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from difflib import SequenceMatcher, get_close_matches
+from difflib import SequenceMatcher
 from collections import defaultdict
 from os import scandir
 import logging
@@ -9,20 +9,45 @@ import logging
 def choose_scheme(finch_out, db_path):
     logger = logging.getLogger('root')
     d = [f.name.split('.')[0] for f in scandir(f'{db_path}/mapping/')]
-    finch_out = finch_out.replace(' ','_')
-    search_string = ''
-    for i in finch_out.split('_'):
-        search_string += f'{i}_'
-        matches = get_close_matches(search_string.strip('_'), d)
-        if len(matches) == 1:
-            break
-        elif len(matches) > 1:
-            logger.info(f'multiple schemes for {search_string.strip("_")}, refining search')
-            continue
-        elif search_string.strip('_') == finch_out:
-            logger.info(f'multiple schemes for {search_string.strip("_")}, will use {matches}')
-            break
-    return matches[0]
+    genus = set([g.split('_')[0] for g in d])
+
+    for i in genus:
+        if SequenceMatcher(None, finch_out.split(' ')[0], i).ratio() == 1:
+            d = [k for k in d if i in k]
+
+    # More critical if no matching genus, good idea to exit program here and prompt to force scheme
+    if len(d) < 1:
+        logger.error(f"no matching schemes for {finch_out.split(' ')[0]}, check available schemes with bart --schemes")
+
+    else: # check species now, if #1/#2 like in Ab, need to account for that
+        logger.info(f"{len(d)} matching schemes for genus {finch_out.split(' ')[0]}")
+        species = set([g.split('_')[1].split('#')[0] for g in d])
+        s = []
+        for i in species:
+            if SequenceMatcher(None, finch_out.split(' ')[1], i).ratio() == 1:
+                s.append(f'{finch_out.split(" ")[0]}_{i}')
+
+        if len(s) >= 1:
+            logger.info(f"matched species {finch_out.split(' ')[1]} to scheme {s[0]}")
+            return s[0]
+
+        else:
+            logger.warning(f"no matching schemes for species {finch_out.split(' ')[1]}")
+        # first go with spp, then try genus scheme with most alleles
+            if 'spp' in species:
+                d = [k for k in d if 'spp' in k]
+            else:
+                top_profiles = 0
+                for i in species:
+                    with open(f'{db_path}/mapping/{finch_out.split(" ")[0]}_{i}.tab', "r") as f:
+                        profiles = len(f.readlines())
+                        if profiles > top_profiles:
+                            top_profiles = profiles
+                            d = [f'{finch_out.split(" ")[0]}_{i}']
+
+            logger.warning(f"{d[0]} might cover your species")
+
+    return d[0]
 
 
 def match_profile(sample, scheme, db_path):
@@ -63,15 +88,15 @@ def match_profile(sample, scheme, db_path):
         else:
             logger.info(f'potential novel allele for {k}')
 
+    exact_dict = {}
     for i in exact:
         for st in list(scheme_dict.keys()):
-            if scheme_dict[st][i] != res_dict[i][0]:
+            if scheme_dict[st][i] == res_dict[i][0]:
                 #logger.info(f'removing {st} due to --exact')
-                scheme_dict.pop(st)
+                exact_dict[st] = scheme_dict[st]
 
-    if len(scheme_dict.keys()) > 1:
+    if len(exact_dict) != 1:
         logger.info(f'no exact profile match, finding closest')
-
         scheme_match = defaultdict(list)
         for st in scheme_dict.keys():
             profile = []
@@ -88,17 +113,16 @@ def match_profile(sample, scheme, db_path):
         sts = scheme_match[1]
 
     else:
+        scheme_dict = exact_dict
         sts = scheme_dict.keys()
 
+    print('Sample\tST\t'+"\t".join([str(x) for x in headers]))
     for st in sts:
-        out = [sample, scheme, st]#({int(scheme_match[0]*100)}%)']
+        out = sample+'\t'+str(st)
         for k, v in scheme_dict[st].items():
             if k in headers:
-                if  v != '':
-                    out.append(f'{k}({v})')
-            else: out.append(f'{k} no hit')
-
-    return out
-
-
+                if v != '':
+                    out += '\t'+v
+            else: out += '\tno hit'
+        print(out)
 

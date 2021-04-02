@@ -13,27 +13,24 @@ from sys import version_info, platform
 from bart.version import __version__
 
 __author__ = "Tom Stanton"
-__credits__ = []
-__license__ = "GPL"
+__license__ = "MIT"
 __maintainer__ = "Tom Stanton"
 __email__ = "tomdstanton@gmail.com"
 __status__ = "Development"
 
 def parse_args():
-    parser = ArgumentParser(add_help=False, usage="bart *.fq.gz [options]")
+    parser = ArgumentParser(add_help=False, usage="bart -i *.fq.gz [options]")
     parser.add_argument('-i', nargs='+', type=Path, help='Paired-end fastq(.gz)')
     parser.add_argument('-t', type=int, default=4, help='threads')
     parser.add_argument('-q', action='store_true', default=False, help='shhh')
     parser.add_argument('--percid', type=int, default=90, help='percid')
     #parser.add_argument('--exact', action='store_false', default=True, help='turn off ST filtering by exact allele hits')
     parser.add_argument('--info', action='store_true', default=False, help='print genome info only')
-    #parser.add_argument('--species', action='store_true', default=False, help='print species only')
     parser.add_argument('--mlst', action='store_true', default=False, help='run mlst')
     parser.add_argument('--schemes', action='store_true', default=False, help='print available MLST schemes')
-    parser.add_argument('--bart', action='store_true', default=False, help='eat my shorts!')
-    parser.add_argument('--use_scheme', metavar='scheme', nargs='?', type=str, const='',
-                        help='no containment-aided scheme choice and forces scheme')
+    parser.add_argument('--use_scheme', metavar='scheme', nargs='?', type=str, const='', help='bypass heuristic scheme choice and force scheme')
     parser.add_argument('--amr', action='store_true', default=False, help='amr gene detection')
+    parser.add_argument('--bart', action='store_true', default=False, help='eat my shorts!')
     parser.add_argument("-h", action="help", help='show this help message and exit')
     args = parser.parse_args()
     return args
@@ -123,7 +120,7 @@ def main():
             ipe(pairs[name], f'/tmp/{sample}', str(args.percid),
                f'{db_path}/indexes/{scheme}', threads)
             from bart.bin.mlst import match_profile
-            print(*match_profile(sample,scheme,db_path), sep='\t')
+            match_profile(sample,scheme,db_path)
 
         if args.amr:
             from bart.bin.kma import ipe
