@@ -1,4 +1,5 @@
-# ba(cterial) r(ead) t(yper)
+# bart
+######BActerial Read Typer
 ![Image](https://github.com/tomdstanton/bart/blob/master/Bart_Simpson_200px.png)
 
 _By Tom Stanton_ \
@@ -18,14 +19,12 @@ Issues/queries/advice?
 ### Introduction
 bart is a short-read bacterial MLST tool,
 designed to be very not-slow and very easy to use.
-It can guess the species and choose the best scheme for
-your reads and outputs a single tab-separated line.
-You can also ue bart to get genome metrics of your reads
-such as estimated size, coverage, %GC and species containment.
+It uses heuristics to choose the best scheme for
+your reads and prints results in a standard tab-separated format.
 
-**Please cite:**
+**If you found bart helpful, please cite:**
 ```
-bart - ba(cterial) r(ead) t(yper)
+bart - BActerial Read Typer
 Thomas David Stanton, 2021
 https://github.com/tomdstanton/bart
 ```
@@ -43,29 +42,24 @@ cd bart
 python setup.py install
 ```
 ### Usage ###
-Before first use, run this quick command to
-index the latest MLST schemes from PubMLST: \
 ```
-bart --update mlst
-```
-Now you can run:
-```
-bart -i read_1.fq.gz read_2.fq.gz --mlst
+bart read_1.fq.gz read_2.fq.gz
 ```
 It's easy to run MLST on a bunch of 
 input reads and pipe the results to 
-a tabular file for downstream usage. Just suppress
-output with the quiet flag and you're golden.
+a tabular file for downstream usage.
 ```
-bart -i *.fq.gz --mlst -q >> mlst.tab
+bart * >> mlst.tab
 ```
 Alternatively, if you know the species of your reads
-or the specific scheme you would like to use, you can speed 
-up the analysis.
-First run```bart --schemes```to see if it's included, now
+or the specific scheme you would like to use, you can bypass
+scheme choosing heuristics.
+First run```bart-update --schemes```to see if it's included, now
 you can run:
 ```
-bart -i *.fq.gz --mlst --use_scheme Acinetobacter_baumannii#2
+bart SRR14091226* --use-scheme Listeria_monocytogenes >> SRR14091226_mlst.tab
 ```
+This took 4 seconds on a 4-core laptop.
+
 Currently only works on paired-end reads. Support for
 single-end and long reads is coming.

@@ -42,5 +42,4 @@ def dist(sketch, db_path):
     child = Popen(cmd, stdout=PIPE)
     r = loads(child.communicate()[0])
     dist_dict = sorted(r, key=lambda k: k['mashDistance'])[:2]
-    logger.info(f'closest refseq genome is {dist_dict[0]["reference"]}')
     return dist_dict[0]["reference"]
