@@ -41,7 +41,7 @@ git clone --recursive https://github.com/tomdstanton/bart
 cd bart
 python setup.py install
 ```
-### Usage ###
+### Usage
 ```
 bart read_1.fq.gz read_2.fq.gz
 ```
@@ -61,5 +61,14 @@ bart SRR14091226* --use-scheme Listeria_monocytogenes >> SRR14091226_mlst.tab
 ```
 This took 4 seconds on a 4-core laptop.
 
-Currently only works on paired-end reads. Support for
+**Output example:**
+
+| Sample      | Scheme                 | ST  | abcZ | bglA | cat | dapE | dat | ldh | lhkA | CC   | Lineage | 
+|-------------|------------------------|-----|------|------|-----|------|-----|-----|------|------|---------| 
+| SRR14091226 | Listeria_monocytogenes | 451 | 7    | 5    | 10  | 21   | 1   | 4   | 1    | CC11 | II      |
+
+**Bugs / issues / development:**
+* Currently only works on paired-end reads. Support for
 single-end and long reads is coming.
+* Support for AMR/virulence gene finding is also coming.
+  
