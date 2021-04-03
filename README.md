@@ -71,6 +71,13 @@ The ```bart-update``` script handles the scheme manipulation and has several opt
 * ```-a``` adds a custom scheme from a fasta and tab mapping file
 * ```-r``` removes the listed schemes in the database
 
+If you want to add a new scheme to the database, you need to
+pr
+Check out an example 
+[fasta](https://rest.pubmlst.org/db/pubmlst_mflocculare_seqdef/loci/adk/alleles_fasta) 
+and 
+[mapping](https://rest.pubmlst.org/db/pubmlst_mflocculare_seqdef/schemes/1/profiles_csv)
+file.
 
 Sometimes there are 2 schemes for a species which is problematic because
 the heuristics will pick the same one every time. For A. baumannii,

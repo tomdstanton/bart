@@ -8,16 +8,16 @@ from requests import get
 import logging
 
 
-def sketch_input(reads, sketch_out):
+def sketch_input(finch, reads, sketch_out):
     logger = logging.getLogger('root')
-    cmd = f'cat {reads[0]} {reads[1]} | finch sketch -o {sketch_out} -'
+    cmd = f'cat {reads[0]} {reads[1]} | {finch} sketch -o {sketch_out} -'
     logger.info(f'{cmd}')
     return run(cmd, shell=True)
 
 
-def info(sketch):
+def info(sketch, finch):
     logger = logging.getLogger('root')
-    cmd = ['finch', 'info', sketch]
+    cmd = [finch, 'info', sketch]
     logger.info(f'{" ".join(cmd)}')
     child = Popen(cmd, stdout=PIPE)
     r = child.communicate()[0].decode('utf-8').split('\n')
@@ -26,7 +26,7 @@ def info(sketch):
     return kmers, depth, gc
 
 
-def dist(sketch, db_path):
+def dist(sketch, db_path, finch):
     logger = logging.getLogger('root')
     ref = f'{db_path}/refseq_sketches_21_1000.sk'
     if not path.isfile(ref):
@@ -37,7 +37,7 @@ def dist(sketch, db_path):
             out.write(get(url).content)
         logger.info(f'Written to {path}')
 
-    cmd = ['finch', 'dist', sketch, ref]
+    cmd = [finch, 'dist', sketch, ref]
     logger.info(f'{" ".join(cmd)}')
     child = Popen(cmd, stdout=PIPE)
     r = loads(child.communicate()[0])

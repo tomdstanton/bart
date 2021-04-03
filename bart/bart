@@ -91,8 +91,8 @@ def main():
         if args.info:
             sketch = f'/tmp/{sample}.sk'
             if not os.path.isfile(sketch):
-                finch.sketch_input(pairs[name], sketch)
-            x = finch.info(sketch)
+                finch.sketch_input(f'{bin_path}/bin/finch-linux64-v0.3.0', pairs[name], sketch)
+            x = finch.info(sketch, f'{bin_path}/bin/finch-linux64-v0.3.0')
             logger.info(f'{"{:.1f}".format(int(x[0]) / 1000000)}Mbp genome, '
                         f'{x[1]} average depth, {"{:.1f}".format(float(x[2]))}% GC')
 
@@ -106,9 +106,9 @@ def main():
         else:
             sketch = f'/tmp/{sample}.sk'
             if not os.path.isfile(sketch):
-                finch.sketch_input(pairs[name], sketch)
+                finch.sketch_input(f'{bin_path}/bin/finch-linux64-v0.3.0', pairs[name], sketch)
 
-            finch_out = finch.dist(sketch, db_path)
+            finch_out = finch.dist(sketch, db_path, f'{bin_path}/bin/finch-linux64-v0.3.0')
             logger.info(f'closest refseq genome is {finch_out}')
 
             d = [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]

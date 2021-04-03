@@ -64,12 +64,13 @@ def main():
                     break
             else:
                 exit(logger.error(f'{i} is not a valid file'))
-        names = set(names)
-        if len(names) > 1:
-            exit(logger.error(f'files need to have same names, not: {names}'))
+        names = list(dict.fromkeys(names))
 
+        if len(names) > 1:
+            exit(logger.error(f'files need to have same names, not: {names[0]}'))
         copyfile(mapping, f'{db_path}/mapping/{names[0]}.tab')
-        index(fasta, f'{db_path}/indexes/{names[0]}')
+        with open(fasta, 'r') as f:
+            index(f.read(), f'{db_path}/indexes/{names[0]}')
 
     if args.remove:
         for name in args.remove:
