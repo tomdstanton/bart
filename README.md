@@ -48,7 +48,7 @@ bart * >> mlst.tab
 Alternatively, if you know the species of your reads
 or the specific scheme you would like to use, you can bypass
 scheme choosing heuristics.
-First run```bart-update --schemes```to see if it's included, now
+First run```bart-update -s```to see if it's included, now
 you can run:
 ```
 bart SRR14091226* --use-scheme Listeria_monocytogenes >> SRR14091226_mlst.tab
@@ -68,16 +68,18 @@ The ```bart-update``` script handles the scheme manipulation and has several opt
 * ```-a``` adds a custom scheme from a fasta and tab mapping file
 * ```-r``` removes the listed schemes in the database
 
-If you want to add a new scheme to the database, you need to
-pr
-Check out an example 
+You can even add your own schemes to the database! You just need to
+provide an allele fasta and corresponding TAB-seprarated profile mapping
+file in the PubMLST format. Check out an example 
 [fasta](https://rest.pubmlst.org/db/pubmlst_mflocculare_seqdef/loci/adk/alleles_fasta) 
 and 
 [mapping](https://rest.pubmlst.org/db/pubmlst_mflocculare_seqdef/schemes/1/profiles_csv)
 file.
-
+```
+bart-update -a scheme.fna scheme.tab
+```
 Sometimes there are 2 schemes for a species which is problematic because
-the heuristics will pick the same one every time. For A. baumannii,
+the heuristics will pick the same one every time. For _A. baumannii_,
 I don't want the Oxford  scheme to be considered, so I simply run:
 ```
 bart-update -r Acinetobacter_baumannii#1
@@ -86,5 +88,13 @@ bart-update -r Acinetobacter_baumannii#1
 **Bugs / issues / development:**
 * Currently only works on paired-end reads. Support for
 single-end and long reads is coming.
-* Support for AMR/virulence gene finding is also coming.
+
+**References:**
+* [Philip T.L.C. Clausen, Frank M. Aarestrup & Ole Lund, "Rapid and precise alignment 
+  of raw reads against redundant databases with KMA", BMC Bioinformatics, 2018;19:307.
+  ](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2336-6)
   
+* [Jolley KA, Bray JE and Maiden MCJ. "Open-access bacterial population genomics: 
+  BIGSdb software, the PubMLST.org website and their applications", 
+  Wellcome Open Res 2018, 3:124
+  ](https://doi.org/10.12688/wellcomeopenres.14826.1)

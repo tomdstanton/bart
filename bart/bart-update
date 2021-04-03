@@ -52,8 +52,8 @@ def main():
         for i in args.add:
             if os.path.isfile(i):
                 names.append(os.path.basename(i).split('.', -1)[0])
-                with open(i, 'rb') as fh:
-                    first = next(fh).decode()
+                with open(i, 'rb') as f:
+                    first = next(f).decode()
                 if first.startswith('>'):
                     fasta = i
                     logger.info(f'{i} is a valid fasta file')
@@ -64,6 +64,8 @@ def main():
                     break
             else:
                 exit(logger.error(f'{i} is not a valid file'))
+
+        # remove dupes to see if name is the same
         names = list(dict.fromkeys(names))
 
         if len(names) > 1:
@@ -101,14 +103,10 @@ def main():
                 i += get(url).text
             index(i, f'{db_path}/indexes/{name}')
 
+        # this deletes files if they already exist
         [f.unlink() for f in Path(f'{db_path}/mapping/').glob("*") if f.is_file()]
         for species in findall('<species>(.*?)</species>', get('https://pubmlst.org/static/data/dbases.xml').text, DOTALL):
             build_mlst(species)
-
-        # if 'amr' in args.db:
-        #     url = 'https://ftp.ncbi.nlm.nih.gov/pathogen/Antimicrobial_resistance/AMRFinderPlus/database/latest/AMR_CDS'
-        #     logger.info(f'indexing {url}')
-        #     index(get(url).text, f'{db_path}/indexes/amr')
 
 
 if __name__ == '__main__':
