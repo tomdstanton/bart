@@ -26,6 +26,7 @@ Thomas David Stanton, 2021
 https://github.com/tomdstanton/bart
 ```
 ### Dependencies
+* Linux (might work on Mac, not tested)
 * python >=3.7
 * [kma](https://anaconda.org/bioconda/kma)
 ### Installation
@@ -36,6 +37,8 @@ cd bart
 python setup.py install
 ```
 ### Usage
+First run: ```bart-update -p```\
+wait a few seconds, thed you're good to go!
 ```
 bart read_1.fq.gz read_2.fq.gz
 ```
