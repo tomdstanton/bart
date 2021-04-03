@@ -61,6 +61,10 @@ This took 4 seconds on a 4-core laptop.
 |-------------|------------------------|-----|------|------|-----|------|-----|-----|------|------|---------| 
 | SRR14091226 | Listeria_monocytogenes | 451 | 7    | 5    | 10  | 21   | 1   | 4   | 1    | CC11 | II      |
 
+* (!) indicates alleles have less than 100% identity and coverage
+* (*) indicates alleles have less than 100% identity
+* (?) indicates alleles have lessthan 100% coverage
+
 ### bart-update
 The ```bart-update``` script handles the scheme manipulation and has several options:
 * ```-s``` prints all available MLST schemes in database
