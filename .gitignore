@@ -1,5 +1,4 @@
 /tests/*.fastq.gz
-packaging_info.txt
 /db/indexes/*
 /db/mapping/*
 /bart/bin/*.rs
@@ -9,3 +8,4 @@ packaging_info.txt
 /bart/debug.log
 notes.txt
 bart.code-workspace
+bart.egg-info
