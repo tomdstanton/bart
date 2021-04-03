@@ -24,7 +24,7 @@ __status__ = "Development"
 def parse_args():
     parser = ArgumentParser(add_help=False, usage="bart *.fq.gz [options]")
     parser.add_argument('i', nargs='+', type=Path, help='Paired-end fastq(.gz)')
-    parser.add_argument('--percid', type=int, default=95, help='percid')
+    parser.add_argument('--percid', type=int, default=90, help='percid')
     parser.add_argument('--info', action='store_true', default=False, help='get genome info')
     parser.add_argument('--use-scheme', metavar='scheme', nargs='?', type=str, const='', help='force scheme')
     parser.add_argument('-t', type=int, default=4, help='threads')
@@ -83,6 +83,14 @@ def main():
         sample = os.path.basename(name)
         logger.info(f'read pair for {sample}: {" ".join(pairs[name])}')
 
+        if args.info:
+            sketch = f'/tmp/{sample}.sk'
+            if not os.path.isfile(sketch):
+                finch.sketch_input(finch_binary, pairs[name], sketch)
+            x = finch.info(sketch, finch_binary)
+            logger.info(f'{"{:.1f}".format(int(x[0]) / 1000000)}Mbp genome, '
+                        f'{x[1]} average depth, {"{:.1f}".format(float(x[2]))}% GC')
+
         if args.use_scheme is not None:
             if not args.use_scheme in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
                 exit(logger.error(f'{args.use_scheme} not a valid scheme, use --schemes to see valid schemes'))
@@ -114,7 +122,7 @@ def main():
                 species, s = set([g.split('_')[1].split('#')[0] for g in d]), []
                 for i in species:
                     if SequenceMatcher(None, finch_out.split(' ')[1], i).ratio() == 1:
-                        s = [k for k in d if i in k]
+                        s.append(f'{finch_out.split(" ")[0]}_{i}')
 
                 if len(s) < 1:
                     logger.warning(f"no matching schemes for species {finch_out.split(' ')[1]}")
@@ -139,7 +147,6 @@ def main():
         ipe(pairs[name], f'/tmp/{sample}', str(args.percid),
             f'{db_path}/indexes/{scheme}', threads)
 
-        # make a dictionary of kma results where allele is the key
         with open(f'/tmp/{sample}.res', newline='\n') as res:
             r = res.read().splitlines()
         res_dict = {}
@@ -154,42 +161,33 @@ def main():
             else:
                 res_dict[k] = v
 
-        logger.info(f'{len(res_dict)} hits found')
-        if len(res_dict) < 1:
-            continue
-
-        # make a dictionary of the scheme where ST is the key
+        scheme_dict = {}
         with open(f'{db_path}/mapping/{scheme}.tab', newline='\n') as tab:
             s = tab.read().splitlines()
-        headers, scheme_dict = s[0].split('\t')[1:], {}
-        for line in s[1:]: #first column is ST
+        headers = s[0].split('\t')[1:]
+        for line in s[1:]:
             v = line.split('\t')
             scheme_dict[int(v[0])] = {headers[i]: v[1:][i] for i in range(len(headers))}
 
-        # make a list of only genes in headers
-        genes, exact = [g for g in headers if g not in ['clonal_complex', 'species', 'CC', 'Lineage']], []
+        genes, y, exact = [g for g in headers if g not in ['clonal_complex', 'species']], [], []
+        for k, v in res_dict.items():
+            if k in genes:
+                y.append(v[0])
 
-        # add info for non-exact matches and make a list of genes with exact matches
-        for k in res_dict.keys():
-            if float(res_dict[k][4]) < 100:
-                res_dict[k][0] += '*'
-            if float(res_dict[k][5]) < 100:
-                res_dict[k][0] += '?'
-            else:
+        for k, v in res_dict.items():
+            if v[4] == '100.00' and v[5] == '100.00':
                 exact.append(k)
+            else:
+                logger.info(f'potential novel allele for {k}')
 
-        # quickly filter the scheme profiles based on exact genes
         exact_dict = scheme_dict
         for i in exact:
             for st in list(exact_dict.keys()):
                 if exact_dict[st][i] != res_dict[i][0]:
                     exact_dict.pop(st)
 
-        # resort to guessing closest match based on sequence matching
         if len(exact_dict) != 1:
             logger.info(f'no exact profile match, finding closest')
-            # make a list of allele numbers for profile sequence match
-            y = [v[0] for k, v in res_dict.items() if k in genes]
             scheme_match = defaultdict(list)
             for st in scheme_dict.keys():
                 profile = []
@@ -197,8 +195,6 @@ def main():
                     if k in res_dict.keys() & genes:
                         profile.append(v)
                 scheme_match[SequenceMatcher(None, profile, y).ratio()].append(st)
-
-            print(scheme_match)
 
             # Invert the dictionary so match scores are keys and sort by key to take best ST match
             scheme_match = sorted(scheme_match.items(), key=lambda item: item[0], reverse=True)[0]
@@ -209,23 +205,25 @@ def main():
             scheme_dict = exact_dict
             sts = scheme_dict.keys()
 
-        # printing output to tab-separated STDOUT for piping
-
-        if args.info:
-            x = finch.info(sketch, finch_binary)
-            headers += ['genome_size', 'ave_depth', '%GC']
-
         print('Sample\tScheme\tST\t' + "\t".join([str(x) for x in headers]))
         for st in sts:
             out = sample + '\t' + scheme + '\t' + str(st)
             for k, v in scheme_dict[st].items():
                 if k in headers:
-                    if v != '':
-                        out += '\t' + v
+                    if k in res_dict.keys():
+                        if v != '':
+                            if float(res_dict[k][4]) < 100:
+                                v += '*'
+                            if float(res_dict[k][5]) < 100:
+                                v += '?'
+                            if float(res_dict[k][4]) < 100 and float(res_dict[k][5]) < 100:
+                                v += '!'
+                            out += '\t' + v
+                        else:
+                            out += '\tno hit'
                 else:
-                    out += '\tno hit'
-            if args.info:
-                out += '\t{}\t{}\t{}'.format(x[0], x[1], x[2])
+                    out += '\t' + v
+
             print(out)
 
     logger.info(f'completed in {"{:.1f}".format(time() - start)} seconds{bart_ascii()}')

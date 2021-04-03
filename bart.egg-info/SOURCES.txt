@@ -1,4 +1,7 @@
+LICENSE
+MANIFEST.in
 README.md
+requirements.txt
 setup.py
 bart/__init__.py
 bart/bart
@@ -12,8 +15,7 @@ bart.egg-info/requires.txt
 bart.egg-info/top_level.txt
 bart/bin/Fq_utils.py
 bart/bin/__init__.py
-bart/bin/amr.py
+bart/bin/ascii.py
 bart/bin/finch.py
 bart/bin/kma.py
-bart/bin/mlst.py
 bart/bin/readfq.py

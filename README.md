@@ -48,7 +48,7 @@ bart * >> mlst.tab
 Alternatively, if you know the species of your reads
 or the specific scheme you would like to use, you can bypass
 scheme choosing heuristics.
-First run```bart-update -s```to see if it's included, now
+First run```bart-update -s | grep -i 'listeria'```to see if it's included, now
 you can run:
 ```
 bart SRR14091226* --use-scheme Listeria_monocytogenes >> SRR14091226_mlst.tab
@@ -61,7 +61,6 @@ This took 4 seconds on a 4-core laptop.
 |-------------|------------------------|-----|------|------|-----|------|-----|-----|------|------|---------| 
 | SRR14091226 | Listeria_monocytogenes | 451 | 7    | 5    | 10  | 21   | 1   | 4   | 1    | CC11 | II      |
 
-* (!) indicates alleles have less than 100% identity and coverage
 * (*) indicates alleles have less than 100% identity
 * (?) indicates alleles have lessthan 100% coverage
 
