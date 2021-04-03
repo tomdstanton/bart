@@ -26,11 +26,8 @@ Thomas David Stanton, 2021
 https://github.com/tomdstanton/bart
 ```
 ### Dependencies
-```
-python >=3.8
-kma
-finch
-```
+* python >=3.7
+* [kma](https://anaconda.org/bioconda/kma)
 ### Installation
 Clone repo and install with python:
 ```
