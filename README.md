@@ -38,7 +38,7 @@ python setup.py install
 ```
 ### Usage
 First run: ```bart-update -p```\
-wait a few seconds, thed you're good to go!
+wait a few seconds, then you're good to go!
 ```
 bart read_1.fq.gz read_2.fq.gz
 ```
