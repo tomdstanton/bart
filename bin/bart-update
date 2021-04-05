@@ -11,7 +11,7 @@ import asyncio
 from shutil import copyfile
 from sys import version_info, platform
 from bart.version import __version__
-from bart.bin.kma import index
+from bart.kma import index
 
 __author__ = "Tom Stanton"
 __license__ = "MIT"

@@ -31,10 +31,8 @@ setup(
     ],
     packages=find_packages(),
     python_requires=">=3.7",
-    include_package_data = True,
-    package_data={'bart': ['bart/db/indexes', 'bart/db/mapping']},
-    scripts=['bart/bart','bart/bart-update'],
+    scripts=['bin/bart','bin/bart-update'],
     keywords='microbial genomics amr virulence',
     install_requires=requirements,
-    zip_safe=True,
+    zip_safe=False,
 )

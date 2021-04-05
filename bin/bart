@@ -11,9 +11,9 @@ import logging
 from difflib import SequenceMatcher
 from sys import version_info, platform
 from bart.version import __version__
-from bart.bin.kma import ipe
-from bart.bin import finch
-from bart.bin.ascii import bart_ascii
+from bart.kma import ipe
+from bart import finch
+from bart.ascii import bart_ascii
 
 __author__ = "Tom Stanton"
 __license__ = "MIT"

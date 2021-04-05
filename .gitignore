@@ -2,8 +2,8 @@
 /db/indexes/*
 /db/mapping/*
 /bart/bin/*.rs
-/bart/bin/Fq_utils.py
-/bart/bin/readfq.py
+/bin/Fq_utils.py
+/bin/readfq.py
 /db/refseq_sketches_21_1000.sk
 /bart/debug.log
 notes.txt
