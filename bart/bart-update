@@ -37,6 +37,9 @@ def main():
     logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
     logger.setLevel(logging.DEBUG)
 
+    Path(f'{db_path}/mapping').mkdir(parents=True, exist_ok=True)
+    Path(f'{db_path}/indexes').mkdir(parents=True, exist_ok=True)
+
     args = parse_args()
 
     if args.schemes:

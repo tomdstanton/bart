@@ -39,24 +39,34 @@ python setup.py install
 ### Usage
 First run: ```bart-update -p```\
 wait a few seconds, then you're good to go!
-```
-bart read_1.fq.gz read_2.fq.gz
-```
-It's easy to run MLST on a bunch of 
-input reads and pipe the results to 
-a tabular file for downstream usage.
+
 ```
 bart * >> mlst.tab
 ```
+* It's easy to run MLST on a bunch of 
+input reads and pipe the results to 
+a tabular file for downstream usage. For this reason,
+an output option isn't included.
+
+* bart guesses the read pairs of input
+files based on the filename and suffix. Try to make
+  sure the paired end read files have the same sample name.
+
 Alternatively, if you know the species of your reads
 or the specific scheme you would like to use, you can bypass
-scheme choosing heuristics.
-First run```bart-update -s | grep -i 'listeria'```to see if it's included, now
-you can run:
+scheme choosing heuristics. For example if you have Listera reads, run:
+```
+bart-update -s | grep -i listeria
+```
+Now you can run:
 ```
 bart SRR14091226* --use-scheme Listeria_monocytogenes >> SRR14091226_mlst.tab
 ```
-This took 4 seconds on a 4-core laptop.
+* Sketching the input reads for containment analysis takes the 
+most time so by selecting a scheme, you can speed up initial analysis.
+
+* The read sketeches are kept in your /tmp/ directory until system reboot
+which speeds up analysis if you want to run bart again.
 
 **Output example:**
 
@@ -65,7 +75,7 @@ This took 4 seconds on a 4-core laptop.
 | SRR14091226 | Listeria_monocytogenes | 451 | 7    | 5    | 10  | 21   | 1   | 4   | 1    | CC11 | II      |
 
 * (*) indicates alleles have less than 100% identity
-* (?) indicates alleles have lessthan 100% coverage
+* (?) indicates alleles have less than 100% coverage
 
 ### bart-update
 The ```bart-update``` script handles the scheme manipulation and has several options:
