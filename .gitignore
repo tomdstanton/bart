@@ -1,10 +1,10 @@
 /tests/*.fastq.gz
-/db/indexes/*
-/db/mapping/*
+/bart/db/indexes/*
+/bart/db/mapping/*
 /bart/bin/*.rs
 /bart/bin/Fq_utils.py
 /bart/bin/readfq.py
-/db/refseq_sketches_21_1000.sk
+/bart/db/refseq_sketches_21_1000.sk
 /bart/debug.log
 notes.txt
 bart.code-workspace

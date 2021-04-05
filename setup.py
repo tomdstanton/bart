@@ -36,5 +36,5 @@ setup(
     scripts=['bart/bart','bart/bart-update'],
     keywords='microbial genomics amr virulence',
     install_requires=requirements,
-    zip_safe=False
+    zip_safe=True,
 )
