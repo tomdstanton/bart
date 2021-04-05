@@ -47,9 +47,9 @@ def main():
     logger.info(f'running on {platform} with Python {str(version_info[:3])[1:-1].replace(", ", ".")}')
 
     if platform == 'linux':
-        finch_binary = f'{bin_path}/bin/finch-linux64-v0.3.0'
+        finch_binary = f'{bin_path}/bart/finch-linux64-v0.3.0'
     elif platform == 'darwin':
-        finch_binary = f'{bin_path}/bin/finch-mac64-v0.3.0'
+        finch_binary = f'{bin_path}/bart/finch-mac64-v0.3.0'
     else:
         exit(logger.error(f'finch binary not compatible with {platform}'))
 
@@ -61,8 +61,11 @@ def main():
     logger.info(f'using {threads} threads')
 
     suffixes = ['_R[12]\.(fastq(?:\.gz)?)$', '_R[12]_[0-9]+?\.(fastq(?:\.gz)?)$',
-                '_[12]\.(fastq(?:\.gz)?)$', '_R[12]\.(fq(?:\.gz)?)$',
-                '_R[12]_[0-9]+?\.(fq(?:\.gz)?)$', '_[12]\.(fq(?:\.gz)?)$']
+                '_R[12].[0-9]+?\.(fastq(?:\.gz)?)$', '_[12]\.(fastq(?:\.gz)?)$',
+                '_[12]_[0-9]+?\.(fastq(?:\.gz)?)$', '_[12].[0-9]+?\.(fastq(?:\.gz)?)$',
+                '_R[12]\.(fq(?:\.gz)?)$', '_R[12]_[0-9]+?\.(fq(?:\.gz)?)$',
+                '_R[12].[0-9]+?\.(fq(?:\.gz)?)$', '_[12]\.(fq(?:\.gz)?)$',
+                '_[12]_[0-9]+?\.(fq(?:\.gz)?)$', '_[12].[0-9]+?\.(fq(?:\.gz)?)$']
 
     r = compile('|'.join(suffixes))
     pairs = defaultdict(list)
@@ -197,8 +200,6 @@ def main():
                     if k in res_dict.keys() & genes:
                         profile.append(v)
                 scheme_match[SequenceMatcher(None, profile, y).ratio()].append(st)
-
-            print(scheme_match)
 
             # Invert the dictionary so match scores are keys and sort by key to take best ST match
             scheme_match = sorted(scheme_match.items(), key=lambda item: item[0], reverse=True)[0]
