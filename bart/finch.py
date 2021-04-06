@@ -30,8 +30,6 @@ def info(sketch, finch):
 
 def dist(sketch, db_path, finch):
     logger = logging.getLogger('root')
-
-    db_path = '/bart/db'
     ref = f'{db_path}/refseq_sketches_21_1000.sk'
 
     if not os.path.isfile(ref):
