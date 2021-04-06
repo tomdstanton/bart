@@ -10,6 +10,7 @@ import logging
 import asyncio
 from shutil import copyfile
 from sys import version_info, platform
+import bart
 from bart.version import __version__
 from bart.kma import index
 
@@ -31,7 +32,7 @@ def parse_args():
 
 
 def main():
-    bin_path = os.path.dirname(__file__)
+    bin_path = f'{os.path.dirname(bart.__file__)}'
     db_path = f'{os.path.dirname(bin_path)}/db'
     logger = logging.getLogger('root')
     logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
