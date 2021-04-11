@@ -1,7 +1,7 @@
 # bart
 **ba**cterial **r**ead **t**yper
 
-![Image](https://github.com/tomdstanton/bart/blob/master/Bart_Simpson_200px.png)
+<centre>![Image](https://github.com/tomdstanton/bart/blob/master/Bart_Simpson_200px.png)
 
 _By Tom Stanton_ \
 [![alt text][1.1]][1] [![alt text][6.1]][6] \
