@@ -29,7 +29,8 @@ https://github.com/tomdstanton/bart
 * Linux (might work on Mac, not tested)
 * python >=3.7
 * [kma](https://anaconda.org/bioconda/kma)
-### Installation
+
+## Installation
 Clone repo and install with python:
 ```
 git clone --recursive https://github.com/tomdstanton/bart

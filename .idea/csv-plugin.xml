@@ -24,6 +24,20 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/bin/bart">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="$USER_HOME$/ownCloud/DocSyncUoE/Bioinformatics/Shionogi_WGS/wgs_data_analysis">
+          <value>
+            <Attribute>
+              <option name="separator" value=":" />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/requirements.txt">
           <value>
             <Attribute>
