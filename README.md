@@ -29,6 +29,7 @@ https://github.com/tomdstanton/bart
 * Linux (might work on Mac, not tested)
 * python >=3.7
 * [kma](https://anaconda.org/bioconda/kma)
+* [finch](https://github.com/onecodex/finch-rs) (binary included)
 
 ## Installation
 Clone repo and install with python:
@@ -66,7 +67,7 @@ bart SRR14091226* --use-scheme Listeria_monocytogenes >> SRR14091226_mlst.tab
 * Sketching the input reads for containment analysis takes the 
 most time so by selecting a scheme, you can speed up initial analysis.
 
-* The read sketeches are kept in your /tmp/ directory until system reboot
+* The read sketches are kept in your ```/tmp/``` directory until system reboot
 which speeds up analysis if you want to run bart again.
 
 **Output example:**
@@ -115,3 +116,7 @@ single-end and long reads is coming.
   BIGSdb software, the PubMLST.org website and their applications", 
   Wellcome Open Res 2018, 3:124
   ](https://doi.org/10.12688/wellcomeopenres.14826.1)
+  
+* [Bovee et al., (2018). Finch: a tool adding dynamic abundance filtering to genomic 
+MinHashing. Journal of Open Source Software, 3(22), 505
+](https://doi.org/10.21105/joss.00505)
