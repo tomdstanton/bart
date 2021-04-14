@@ -39,11 +39,9 @@ cd bart
 python setup.py install
 ```
 ### Usage
-First run: ```bart-update -p```\
-wait a few seconds, then you're good to go!
 
 ```
-bart * >> mlst.tab
+$ bart path_to_reads/* >> mlst.tab
 ```
 * It's easy to run MLST on a bunch of 
 input reads and pipe the results to 
@@ -54,15 +52,17 @@ an output option isn't included.
 files based on the filename and suffix. Try to make
   sure the paired end read files have the same sample name.
 
-Alternatively, if you know the species of your reads
+If you already know the species of your reads
 or the specific scheme you would like to use, you can bypass
-scheme choosing heuristics. For example if you have Listera reads, run:
+scheme choosing heuristics. For example if you have Listera reads,
+see if the scheme is included:
 ```
-bart-update -s | grep -i listeria
+$ bart-update -s | grep -i listeria
+Listeria_monocytogenes
 ```
 Now you can run:
 ```
-bart SRR14091226* --use-scheme Listeria_monocytogenes >> SRR14091226_mlst.tab
+$ bart SRR14091226* --use-scheme Listeria_monocytogenes >> SRR14091226_mlst.tab
 ```
 * Sketching the input reads for containment analysis takes the 
 most time so by selecting a scheme, you can speed up initial analysis.
@@ -79,6 +79,11 @@ which speeds up analysis if you want to run bart again.
 * (*) indicates alleles have less than 100% identity
 * (?) indicates alleles have less than 100% coverage
 
+I like to test bart on SRA reads like so:
+```
+$ fasterq-dump SRR14224855 -S && pigz SRR14224855* && bart SRR14224855*
+```
+
 ### bart-update
 The ```bart-update``` script handles the scheme manipulation and has several options:
 * ```-s``` prints all available MLST schemes in database
@@ -94,13 +99,13 @@ and
 [mapping](https://rest.pubmlst.org/db/pubmlst_mflocculare_seqdef/schemes/1/profiles_csv)
 file.
 ```
-bart-update -a scheme.fna scheme.tab
+$ bart-update -a scheme.fna scheme.tab
 ```
 Sometimes there are 2 schemes for a species which is problematic because
 the heuristics will pick the same one every time. For _A. baumannii_,
 I don't want the Oxford  scheme to be considered, so I simply run:
 ```
-bart-update -r Acinetobacter_baumannii#1
+$ bart-update -r Acinetobacter_baumannii#1
 ```
 
 **Bugs / issues / development:**
