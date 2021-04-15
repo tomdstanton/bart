@@ -199,7 +199,7 @@ def main():
                     exact.append(i)
         not_exact = list({*exact} ^ {*genes})
 
-        if not None in not_exact:
+        if len(not_exact) >= 1:
             logger.info(f'potential novel allele for {", ".join(not_exact)}')
         # quickly filter the scheme profiles based on exact genes
         exact_dict = scheme_dict
