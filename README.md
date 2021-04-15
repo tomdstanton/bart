@@ -39,55 +39,70 @@ cd bart
 python setup.py install
 ```
 ### Usage
-
 ```
-$ bart path_to_reads/* >> mlst.tab
+$ bart reads >> mlst.tab
 ```
-* It's easy to run MLST on a bunch of 
-input reads and pipe the results to 
-a tabular file for downstream usage. For this reason,
-an output option isn't included.
-
-* bart guesses the read pairs of input
-files based on the filename and suffix. Try to make
-  sure the paired end read files have the same sample name.
-
-If you already know the species of your reads
-or the specific scheme you would like to use, you can bypass
-scheme choosing heuristics. For example if you have Listera reads,
-see if the scheme is included:
-```
-$ bart-update -s | grep -i listeria
-Listeria_monocytogenes
-```
-Now you can run:
-```
-$ bart SRR14091226* --use-scheme Listeria_monocytogenes >> SRR14091226_mlst.tab
-```
-* Sketching the input reads for containment analysis takes the 
-most time so by selecting a scheme, you can speed up initial analysis.
-
-* The read sketches are kept in your ```/tmp/``` directory until system reboot
-which speeds up analysis if you want to run bart again.
-
-**Output example:**
-
-| Sample      | Scheme                 | ST  | abcZ | bglA | cat | dapE | dat | ldh | lhkA | CC   | Lineage | 
-|-------------|------------------------|-----|------|------|-----|------|-----|-----|------|------|---------| 
-| SRR14091226 | Listeria_monocytogenes | 451 | 7    | 5    | 10  | 21   | 1   | 4   | 1    | CC11 | II      |
-
-* (*) indicates alleles have less than 100% identity
-* (?) indicates alleles have less than 100% coverage
-
 I like to test bart on SRA reads like so:
 ```
 $ fasterq-dump SRR14224855 -S && pigz SRR14224855* && bart SRR14224855*
 ```
+* Sketching the input reads for containment analysis takes the 
+most time so by selecting a scheme, you can speed up initial analysis.
+* The read sketches are kept in your ```/tmp/``` directory until system reboot
+which speeds up analysis if you want to run bart again.
+If you already know the species of your reads
+or the specific scheme you would like to use, you can bypass
+scheme choosing heuristics. For example if you have Staphylococcus reads,
+see if the scheme is included:
+```
+$ bart-update -s | grep -i Staphylococcus
+Staphylococcus_aureus
+Staphylococcus_chromogenes
+Staphylococcus_epidermidis
+Staphylococcus_haemolyticus
+Staphylococcus_hominis
+Staphylococcus_lugdunensis
+Staphylococcus_pseudintermedius
+```
+Now you can run:
+```
+$ bart SRR14224855* --use-scheme Staphylococcus_aureus
+```
+| Sample      | Scheme                | ST   | arcC! | aroE | glpF | gmk | pta | tpi | yqiL | clonal_complex | 
+|-------------|-----------------------|------|-------|------|------|-----|-----|-----|------|----------------| 
+| SRR14224855 | Staphylococcus_aureus | 9    | 3     | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
+
+* (*) indicates alleles have less than 100% identity
+* (?) indicates alleles have less than 100% coverage
+* (!) indicates alleles have less than 100% coverage and identity
+
+It looks like we have a novel allele for _arcC_!
+
+By default, bart will assume that the allele for non-exact 
+hits is the most similar to the novel allele 
+and will assign a profile with this assumption.
+
+Passing the ```--exact``` flag with make
+bart display the closest profiles based on exact allele hits only.
+```
+$ bart SRR14224855* --use-scheme Staphylococcus_aureus --exact
+```
+| Sample      | Scheme                | ST   | arcC! | aroE | glpF | gmk | pta | tpi | yqiL | clonal_complex | 
+|-------------|-----------------------|------|-------|------|------|-----|-----|-----|------|----------------| 
+| SRR14224855 | Staphylococcus_aureus | 9    | 3     | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
+| SRR14224855 | Staphylococcus_aureus | 63   | 1     | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
+| SRR14224855 | Staphylococcus_aureus | 706  | 86    | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
+| SRR14224855 | Staphylococcus_aureus | 1569 | 244   | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
+| SRR14224855 | Staphylococcus_aureus | 2423 | 262   | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
+| SRR14224855 | Staphylococcus_aureus | 4987 | 5     | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
+| SRR14224855 | Staphylococcus_aureus | 5471 | 657   | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
+| SRR14224855 | Staphylococcus_aureus | 5717 | 331   | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
+| SRR14224855 | Staphylococcus_aureus | 6556 | 767   | 3    | 1    | 1   | 1   | 1   | 10   | CC1            |
 
 ### bart-update
 The ```bart-update``` script handles the scheme manipulation and has several options:
 * ```-s``` prints all available MLST schemes in database
-* ```-p``` indexes all schemes from pubmlst (this sounds slow but takes <1 min)
+* ```-p``` updates and indexes all schemes from pubmlst (this sounds slow but takes <1 min)
 * ```-a``` adds a custom scheme from a fasta and tab mapping file
 * ```-r``` removes the listed schemes in the database
 
@@ -111,6 +126,9 @@ $ bart-update -r Acinetobacter_baumannii#1
 **Bugs / issues / development:**
 * Currently only works on paired-end reads. Support for
 single-end and long reads is coming.
+* bart guesses the read pairs of input 
+  files based on the filename and suffix. Try to make 
+  sure the paired end read files have the same sample name.
 
 **References:**
 * [Philip T.L.C. Clausen, Frank M. Aarestrup & Ole Lund, "Rapid and precise alignment 
