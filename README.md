@@ -15,7 +15,7 @@ Issues/queries/advice?
 
 ### Introduction
 bart is a short-read bacterial MLST tool,
-designed to be very not-slow and very easy to use.
+designed to be fast and very easy to use.
 It uses heuristics to choose the best scheme for
 your reads and prints results in a standard tab-separated format.
 
@@ -28,7 +28,7 @@ https://github.com/tomdstanton/bart
 ### Dependencies
 * Linux (might work on Mac, not tested)
 * python >=3.7
-* [kma](https://anaconda.org/bioconda/kma)
+* [kma](https://anaconda.org/bioconda/kma) (use conda)
 * [finch](https://github.com/onecodex/finch-rs) (binary included)
 
 ## Installation
@@ -40,22 +40,30 @@ python setup.py install
 ```
 ### Usage
 ```
-$ bart reads >> mlst.tab
+$ bart paired-end-reads.fq.gz [options] > mlst.tab
+
+--options [defaults]:
+  --scheme [scheme]  force scheme, see bart-update -s
+  --exact            match profile from exact hits only
+  --percid [95]      template percent cutoff
+  --info             add genome info to output table
+  -o [input path]    export alleles to fasta
+  -t [4]             threads
+  -q                 silence messages
+  -h                 show this help message and exit
 ```
 I like to test bart on SRA reads like so:
 ```
-$ fasterq-dump SRR14224855 -S && pigz SRR14224855* && bart SRR14224855*
+$ fastq-dump SRR14224855 --split-files --gzip && bart SRR14224855*
 ```
-* Sketching the input reads for containment analysis takes the 
-most time so by selecting a scheme, you can speed up initial analysis.
-* The read sketches are kept in your ```/tmp/``` directory until system reboot
-which speeds up analysis if you want to run bart again.
 If you already know the species of your reads
 or the specific scheme you would like to use, you can bypass
-scheme choosing heuristics. For example if you have Staphylococcus reads,
+scheme choosing heuristics. 
+
+For example if you have Staphylococcus reads,
 see if the scheme is included:
 ```
-$ bart-update -s | grep -i Staphylococcus
+$ bart-update -s | grep Staphylococcus
 Staphylococcus_aureus
 Staphylococcus_chromogenes
 Staphylococcus_epidermidis
@@ -66,7 +74,7 @@ Staphylococcus_pseudintermedius
 ```
 Now you can run:
 ```
-$ bart SRR14224855* --use-scheme Staphylococcus_aureus
+$ bart SRR14224855* --scheme Staphylococcus_aureus
 ```
 | Sample      | Scheme                | ST   | arcC! | aroE | glpF | gmk | pta | tpi | yqiL | clonal_complex | 
 |-------------|-----------------------|------|-------|------|------|-----|-----|-----|------|----------------| 
@@ -76,7 +84,7 @@ $ bart SRR14224855* --use-scheme Staphylococcus_aureus
 * (?) indicates alleles have less than 100% coverage
 * (!) indicates alleles have less than 100% coverage and identity
 
-It looks like we have a novel allele for _arcC_!
+It looks like we have a novel allele for _arcC_ !!
 
 By default, bart will assume that the allele for non-exact 
 hits is the most similar to the novel allele 
@@ -85,7 +93,7 @@ and will assign a profile with this assumption.
 Passing the ```--exact``` flag with make
 bart display the closest profiles based on exact allele hits only.
 ```
-$ bart SRR14224855* --use-scheme Staphylococcus_aureus --exact
+$ bart SRR14224855* --scheme Staphylococcus_aureus --exact
 ```
 | Sample      | Scheme                | ST   | arcC! | aroE | glpF | gmk | pta | tpi | yqiL | clonal_complex | 
 |-------------|-----------------------|------|-------|------|------|-----|-----|-----|------|----------------| 
@@ -125,7 +133,7 @@ $ bart-update -r Acinetobacter_baumannii#1
 
 **Bugs / issues / development:**
 * Currently only works on paired-end reads. Support for
-single-end and long reads is coming.
+single-end and long reads is coming soon!
 * bart guesses the read pairs of input 
   files based on the filename and suffix. Try to make 
   sure the paired end read files have the same sample name.
