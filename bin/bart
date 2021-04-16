@@ -10,7 +10,6 @@ from time import time
 import logging
 from difflib import SequenceMatcher
 from sys import version_info, platform
-import bart
 from bart.version import __version__
 from bart.kma import ipe
 from bart import finch
@@ -42,8 +41,10 @@ def parse_args():
 
 
 def main():
-    bin_path = f'{os.path.dirname(bart.__file__)}'
-    db_path = f'{os.path.dirname(bin_path)}/db'
+    bin_path = os.path.join(os.path.dirname(os.path.dirname(__file__)))
+    os.makedirs(f'{bin_path}/db/indexes', exist_ok=True)
+    os.makedirs(f'{bin_path}/db/mapping', exist_ok=True)
+    db_path = f'{bin_path}/db'
     logger = logging.getLogger('root')
     logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
     logger.setLevel(logging.DEBUG)
@@ -59,9 +60,9 @@ def main():
     logger.info(f'running on {platform} with Python {str(version_info[:3])[1:-1].replace(", ", ".")}')
 
     if platform == 'linux':
-        finch_binary = f'{bin_path}/finch-linux64-v0.3.0'
+        finch_binary = f'{bin_path}/bart/finch-linux64-v0.3.0'
     elif platform == 'darwin':
-        finch_binary = f'{bin_path}/finch-mac64-v0.3.0'
+        finch_binary = f'{bin_path}/bart/finch-mac64-v0.3.0'
     else:
         exit(logger.error(f'finch binary not compatible with {platform}'))
 

@@ -10,7 +10,6 @@ import logging
 import asyncio
 from shutil import copyfile
 from sys import version_info, platform, argv
-import bart
 from bart.version import __version__
 from bart.kma import index
 
@@ -36,15 +35,13 @@ def parse_args():
 
 
 def main():
-    bin_path = f'{os.path.dirname(bart.__file__)}'
-    db_path = f'{os.path.dirname(bin_path)}/db'
+    bin_path = os.path.join(os.path.dirname(os.path.dirname(__file__)))
+    os.makedirs(f'{bin_path}/db/indexes', exist_ok=True)
+    os.makedirs(f'{bin_path}/db/mapping', exist_ok=True)
+    db_path = f'{bin_path}/db'
     logger = logging.getLogger('root')
     logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
     logger.setLevel(logging.DEBUG)
-
-    Path(f'{db_path}/mapping').mkdir(parents=True, exist_ok=True)
-    Path(f'{db_path}/indexes').mkdir(parents=True, exist_ok=True)
-
     args = parse_args()
 
     if args.s:

@@ -36,7 +36,7 @@ Clone repo and install with python:
 ```
 git clone --recursive https://github.com/tomdstanton/bart
 cd bart
-python setup.py install
+python setup.py develop
 ```
 ### Usage
 ```
