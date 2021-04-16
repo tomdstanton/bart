@@ -9,7 +9,7 @@ from pathlib import Path
 import logging
 import asyncio
 from shutil import copyfile
-from sys import version_info, platform
+from sys import version_info, platform, argv
 import bart
 from bart.version import __version__
 from bart.kma import index
@@ -21,12 +21,16 @@ __email__ = "tomdstanton@gmail.com"
 __status__ = "Development"
 
 def parse_args():
-    parser = ArgumentParser(add_help=False, usage="bart-update [options]")
-    parser.add_argument('-s', '--schemes', action='store_true', default=False, help='print available MLST schemes')
-    parser.add_argument('-p', '--pubmlst', action='store_true', default=False, help='update pubMLST schemes')
-    parser.add_argument('-a', '--add', nargs='*', type=Path, help='path to custom scheme fasta and csv')
-    parser.add_argument('-r', '--remove', type=str, nargs='*', help='name of scheme(s) to remove')
-    parser.add_argument("-h", action="help", help='show this help message and exit')
+    parser = ArgumentParser(add_help=False, usage="bart-update [options]",)
+    parser.print_usage = parser.print_help
+    options = parser.add_argument_group('--options [defaults]')
+    options.add_argument('-s', action='store_true', default=False, help='print available MLST schemes')
+    options.add_argument('-p', action='store_true', default=False, help='update pubMLST schemes')
+    options.add_argument('-a', metavar='', nargs='*', type=Path, help='path to custom scheme fasta and csv')
+    options.add_argument('-r', metavar='', type=str, nargs='*', help='name of scheme(s) to remove')
+    options.add_argument('-h', action="help", help='show this help message and exit')
+    if len(argv) == 1:
+        exit(parser.print_help())
     args = parser.parse_args()
     return args
 
@@ -43,17 +47,17 @@ def main():
 
     args = parse_args()
 
-    if args.schemes:
+    if args.s:
         d = [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]
         exit(print(*sorted(d), sep="\n"))
 
     logger.info(f'this is bart {__version__} by {__author__}')
     logger.info(f'running on {platform} with Python {str(version_info[:3])[1:-1].replace(", ", ".")}')
 
-    if args.add:
+    if args.a:
         names = []
-        logger.info(f'adding scheme from: {str(args.add)}')
-        for i in args.add:
+        logger.info(f'adding scheme from: {str(args.a)}')
+        for i in args.a:
             if os.path.isfile(i):
                 names.append(os.path.basename(i).split('.', -1)[0])
                 with open(i, 'rb') as f:
@@ -78,15 +82,15 @@ def main():
         with open(fasta, 'r') as f:
             index(f.read(), f'{db_path}/indexes/{names[0]}')
 
-    if args.remove:
-        for name in args.remove:
+    if args.r:
+        for name in args.r:
             logger.info(f'removing {db_path}/mapping/{name}.tab')
             os.remove(f'{db_path}/mapping/{name}.tab')
             for i in ['.comp.b', '.seq.b', '.length.b', '.name']:
                 logger.info(f'removing {db_path}/indexes/{name}{i}')
                 os.remove(f'{db_path}/indexes/{name}{i}')
 
-    if args.pubmlst:
+    if args.p:
         def background(f):
             def wrapped(*args, **kwargs):
                 return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
