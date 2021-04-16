@@ -221,7 +221,7 @@ def main():
         sts = scheme_dict.keys()
 
         # printing output to tab-separated STDOUT for piping
-        if args.inputnfo:
+        if args.info:
             x = finch.info(sketch, finch_binary)
             headers += ['genome_size', 'ave_depth', '%GC']
 
@@ -235,7 +235,7 @@ def main():
                 else:
                     out += '\tno hit'
 
-            if args.inputnfo:
+            if args.o:
                 out += '\t{}\t{}\t{}'.format(x[0], x[1], x[2])
             print(out)
 
