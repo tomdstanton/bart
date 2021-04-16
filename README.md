@@ -48,6 +48,8 @@ $ bart paired-end-reads.fq.gz [options] > mlst.tab
   --percid [95]      template percent cutoff
   --info             add genome info to output table
   -o [input path]    export alleles to fasta
+  -k                 keep temporary files
+  -l [cwd]           create logfile
   -t [4]             threads
   -q                 silence messages
   -h                 show this help message and exit
