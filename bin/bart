@@ -189,41 +189,69 @@ def main():
             scheme_dict[int(v[0])] = {headers[i]: v[1:][i] for i in range(len(headers))}
 
         # make a list of only genes in headers
-        genes, exact = [g for g in headers if g not in ['clonal_complex', 'species', 'CC', 'Lineage']], []
+        genes, exact, no_hit = [g for g in headers if g not in ['clonal_complex', 'species', 'CC', 'Lineage']], [], []
 
-        # add info for non-exact matches and make a list of genes with exact matches
+        # add info in output header for non-exact matches and make a list of genes with exact matches
         for x, i in enumerate(headers):
             if i in genes:
-                if float(res_dict[i][4]) < 100 and float(res_dict[i][5]) < 100:
-                    headers[x] = f'{i}!'
-                elif float(res_dict[i][4]) < 100:
-                    headers[x] = f'{i}*'
-                elif float(res_dict[i][5]) < 100:
-                    headers[x] = f'{i}?'
+                if i in res_dict.keys():
+                    if float(res_dict[i][4]) < 100 and float(res_dict[i][5]) < 100:
+                        headers[x] = f'{i}!'
+                    elif float(res_dict[i][4]) < 100:
+                        headers[x] = f'{i}*'
+                    elif float(res_dict[i][5]) < 100:
+                        headers[x] = f'{i}?'
+                    else:
+                        exact.append(i)
                 else:
-                    exact.append(i)
-        not_exact = list({*exact} ^ {*genes})
+                    no_hit.append(i)
+                    logger.info('no hit for ' + i)
+                    for p in scheme_dict.keys():
+                        if scheme_dict[p][i] == '0':
+                            logger.info(f'this scheme considers missing {i} alleles, setting {i} allele to 0')
+                            res_dict[i] = ['0'] + ['missing'] * 10
+                            exact.append(i)
+                            break
 
+        not_exact = list({*exact} ^ {*res_dict.keys()})
         if len(not_exact) >= 1:
             logger.info(f'potential novel allele for {", ".join(not_exact)}')
-        # quickly filter the scheme profiles based on exact genes
-        exact_dict = scheme_dict
+
+        # Profile Choosing
+        exact = list({*genes} ^ {*not_exact})
+        profile_dict = dict(scheme_dict)
+        # need to make a copy in case no matches and scheme dict is deleted (not pythonic)
         if args.exact is False:
             for i in not_exact:
                 logger.info(f'assuming {res_dict[i][0]} is closest allele for {i}')
-            exact = genes
+            for i in genes:
+                for st in list(profile_dict.keys()):
+                    if scheme_dict[st][i] != res_dict[i][0]:
+                        profile_dict.pop(st)
 
-        for i in exact:
-            for st in list(exact_dict.keys()):
-                if exact_dict[st][i] != res_dict[i][0]:
-                    exact_dict.pop(st)
+            if len(profile_dict) < 1:
+                logger.info(f'no profile matches, dropping {", ".join(not_exact)}')
+                profile_dict = dict(scheme_dict)
+                for i in exact:
+                    for st in list(profile_dict.keys()):
+                        if scheme_dict[st][i] != res_dict[i][0]:
+                            profile_dict.pop(st)
 
-        if len(exact_dict) != 1:
-            logger.info(f'no exact profile match, displaying {len(exact_dict)} close matches')
-        scheme_dict = exact_dict
-        sts = scheme_dict.keys()
+        if args.exact is True:
+            logger.info(f'only considering exact hits for profile matching: {", ".join(exact)}')
+            profile_dict = dict(scheme_dict)
+            for i in exact:
+                for st in list(profile_dict.keys()):
+                    if scheme_dict[st][i] != res_dict[i][0]:
+                        profile_dict.pop(st)
 
-        # printing output to tab-separated STDOUT for piping
+        if len(profile_dict) != 1:
+            logger.info(f'no exact profile match, displaying {len(profile_dict)} close matches')
+        elif len(profile_dict) < 1:
+            logger.error(f'no profile matches')
+            continue
+
+        # Printing output to tab-separated STDOUT for piping
         info = []
         if args.info:
             if not os.path.isfile(sketch):
@@ -233,9 +261,9 @@ def main():
         if len(info) > 0:
             headers += ['genome_size', 'ave_depth', '%GC']
         print('Sample\tScheme\tST\t' + "\t".join([str(x) for x in headers]))
-        for st in sts:
+        for st in profile_dict.keys():
             out = sample + '\t' + scheme + '\t' + str(st)
-            for k, v in scheme_dict[st].items():
+            for k, v in profile_dict[st].items():
                 if k in [s.strip('?').strip('!').strip('*') for s in headers]:
                     if v != '':
                         out += '\t' + v
