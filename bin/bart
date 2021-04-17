@@ -276,22 +276,22 @@ def main():
                 out += '\t{}\t{}\t{}'.format(info[0], info[1], info[2])
             print(out)
 
-            if args.o is not None:
-                outfile = args.o
-                if outfile == '':
-                    delim = '.'
-                    if '_' in pairs[name][0]:
-                        delim = '_'
-                    outfile = f'{pairs[name][0].split(delim, 1)[0]}_alleles.fna'
-                with open(f'/tmp/{sample}.fsa', newline='\n') as fna, open(outfile, 'wt') as out:
-                    for seq in fna.read().split('>')[1:]:
-                        for k, v in res_dict.items():
-                            if f'{k}_{v[0]}' in seq:
-                                if k in not_exact:
-                                    out.write('>{}_novel\n{}'.format(k, seq.split("\n", 1)[1]))
-                                else:
-                                    out.write('>{}_{}\n{}'.format(k, v[0], seq.split("\n", 1)[1]))
-                logger.info(f'written alleles to {outfile}')
+        if args.o is not None:
+            outfile = args.o
+            if outfile == '':
+                delim = '.'
+                if '_' in pairs[name][0]:
+                    delim = '_'
+                outfile = f'{pairs[name][0].split(delim, 1)[0]}_alleles.fna'
+            with open(f'/tmp/{sample}.fsa', newline='\n') as fna, open(outfile, 'wt') as out:
+                for seq in fna.read().split('>')[1:]:
+                    for k, v in res_dict.items():
+                        if f'{k}_{v[0]}' in seq:
+                            if k in not_exact:
+                                out.write('>{}_novel\n{}'.format(k, seq.split("\n", 1)[1]))
+                            else:
+                                out.write('>{}_{}\n{}'.format(k, v[0], seq.split("\n", 1)[1]))
+            logger.info(f'written alleles to {outfile}')
 
         # Cleanup
         if not args.k:
