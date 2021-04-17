@@ -176,8 +176,10 @@ def main():
             else:
                 res_dict[k] = v
 
-        logger.info(f'{len(res_dict)} hits found')
-        if len(res_dict) < 1:
+        if len(res_dict) > 0:
+            logger.info(f'{len(res_dict)} hits found')
+        else:
+            logger.error('no hits found')
             continue
 
         # make a dictionary of the scheme where ST is the key
@@ -245,9 +247,10 @@ def main():
                     if scheme_dict[st][i] != res_dict[i][0]:
                         profile_dict.pop(st)
 
-        if len(profile_dict) != 1:
+        if len(profile_dict) > 1:
             logger.info(f'no exact profile match, displaying {len(profile_dict)} close matches')
-        elif len(profile_dict) < 1:
+
+        if len(profile_dict) == 0:
             logger.error(f'no profile matches')
             continue
 
