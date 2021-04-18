@@ -40,7 +40,7 @@ python setup.py develop
 ```
 ### Usage
 ```
-$ bart paired-end-reads.fq.gz [options] > mlst.tab
+$ bart paired-end-reads.fq(.gz) [options] > mlst.tab
 
 --options [defaults]:
   --scheme [scheme]  force scheme, see bart-update -s
