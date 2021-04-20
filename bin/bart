@@ -247,34 +247,40 @@ def main():
                     if scheme_dict[st][i] != res_dict[i][0]:
                         profile_dict.pop(st)
 
-        if len(profile_dict) > 1:
-            logger.info(f'no exact profile match, displaying {len(profile_dict)} close matches')
-
-        if len(profile_dict) == 0:
-            logger.error(f'no profile matches')
-            continue
-
         # Printing output to tab-separated STDOUT for piping
         info = []
         if args.info:
             if not os.path.isfile(sketch):
                 finch.sketch_input(finch_binary, pairs[name], sketch)
             info = finch.info(sketch, finch_binary)
-
         if len(info) > 0:
             headers += ['genome_size', 'ave_depth', '%GC']
         print('Sample\tScheme\tST\t' + "\t".join([str(x) for x in headers]))
-        for st in profile_dict.keys():
-            out = sample + '\t' + scheme + '\t' + str(st)
-            for k, v in profile_dict[st].items():
-                if k in [s.strip('?').strip('!').strip('*') for s in headers]:
-                    if v != '':
-                        out += '\t' + v
-                else:
-                    out += '\tno hit'
+
+        if len(profile_dict) > 1:
+            logger.info(f'no exact profile match, displaying {len(profile_dict)} close matches')
+
+        if len(profile_dict) == 0:
+            logger.error(f'no profile matches')
+            out = sample + '\t' + scheme + '\t' + '-'
+            for gene in res_dict.keys():
+                out += '\t' + res_dict[gene][0]
             if len(info) > 0:
                 out += '\t{}\t{}\t{}'.format(info[0], info[1], info[2])
             print(out)
+
+        else:
+            for st in profile_dict.keys():
+                out = sample + '\t' + scheme + '\t' + str(st)
+                for k, v in profile_dict[st].items():
+                    if k in [s.strip('?').strip('!').strip('*') for s in headers]:
+                        if v != '':
+                            out += '\t' + v
+                    else:
+                        out += '\tno hit'
+                if len(info) > 0:
+                    out += '\t{}\t{}\t{}'.format(info[0], info[1], info[2])
+                print(out)
 
         if args.o is not None:
             outfile = args.o
