@@ -14,7 +14,7 @@ Issues/queries/advice?
 [6.1]: http://i.imgur.com/0o48UoR.png (github icon with padding)
 
 ### Introduction
-bart is a short-read bacterial MLST tool,
+bart is a bacterial MLST tool for NGS reads,
 designed to be fast and very easy to use.
 It uses heuristics to choose the best scheme for
 your reads and prints results in a standard tab-separated format.
