@@ -161,6 +161,7 @@ def main():
 
         # make a dictionary of kma results where allele is the key
         with open(f'/tmp/{sample}.res', newline='\n') as res:
+        #with open('/tmp/1907353.res', newline='\n') as res:
             r = res.read().splitlines()
         res_dict = {}
         for line in r[1:]:
@@ -184,6 +185,7 @@ def main():
 
         # make a dictionary of the scheme where ST is the key
         with open(f'{db_path}/mapping/{scheme}.tab', newline='\n') as tab:
+        #with open('/home/tom/PycharmProjects/bart/db/mapping/Enterobacter_cloacae.tab', newline='\n') as tab:
             s = tab.read().splitlines()
         headers, scheme_dict = s[0].split('\t')[1:], {}
         for line in s[1:]: #first column is ST
@@ -207,6 +209,7 @@ def main():
                         exact.append(i)
                 else:
                     no_hit.append(i)
+                    headers[x] = f'{i}#'
                     logger.info('no hit for ' + i)
                     for p in scheme_dict.keys():
                         if scheme_dict[p][i] == '0':
@@ -215,6 +218,7 @@ def main():
                             exact.append(i)
                             break
 
+        [genes.remove(gene) for gene in no_hit if gene not in exact]
         not_exact = list({*exact} ^ {*res_dict.keys()})
         if len(not_exact) >= 1:
             logger.info(f'potential novel allele for {", ".join(not_exact)}')
@@ -278,7 +282,7 @@ def main():
                         if v != '':
                             out += '\t' + v
                     else:
-                        out += '\tno hit'
+                        out += '\t-'
                 if len(info) > 0:
                     out += '\t{}\t{}\t{}'.format(info[0], info[1], info[2])
                 print(out)
