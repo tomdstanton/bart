@@ -8,7 +8,6 @@ import os
 from pathlib import Path
 from time import time
 import logging
-from difflib import SequenceMatcher
 from sys import version_info, platform
 from bart.version import __version__
 from bart.kma import ipe
@@ -66,7 +65,7 @@ def main():
     else:
         exit(logger.error(f'finch binary not compatible with {platform}'))
 
-    ### Check input filetypes and create read-pair dict ###
+##### Check input #####
     threads = str(args.t)
     if args.t > os.cpu_count():
         logger.warning(f'number of threads exceeds available CPUs')
@@ -98,10 +97,11 @@ def main():
         os.system("bart-update -p")
 
     start = time()
-    ### Loop over read-pair dict ###
-    for name in list(pairs):
-        sample = os.path.basename(name)
-        logger.info(f'read pair for {sample}: {" ".join(pairs[name])}')
+
+##### Loop over read-pair dict #####
+    for reads in list(pairs):
+        sample = os.path.basename(reads)
+        logger.info(f'read pair for {sample}: {" ".join(pairs[reads])}')
         sketch = f'/tmp/{sample}.sk'
         if args.scheme is not None:
             if not args.scheme in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
@@ -110,63 +110,69 @@ def main():
                 scheme = args.scheme
         else:
             if not os.path.isfile(sketch):
-                finch.sketch_input(finch_binary, pairs[name], sketch)
+                finch.sketch_input(finch_binary, pairs[reads], sketch)
+
+##### Choose Scheme #####
             finch_out = finch.dist(sketch, db_path, finch_binary)
             logger.info(f'closest refseq genome is {finch_out}')
-            d = [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]
+            schemes = [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]
+            genus, species = finch_out.split(' ')[0], finch_out.split(' ')[1]
+            scheme = ''
             # First check genus
-
             if 'Shigella' in finch_out:
-                d = ['Escherichia_coli#1']
+                scheme = 'Escherichia_coli#1'
                 logger.warning('Shigella uses the Escherichia_coli#1 scheme')
             else:
-                d = [k for k in d if finch_out.split(' ')[0] in k]
+                genus_list = [s for s in schemes if genus in s]
 
-            if len(d) < 1: # More critical if no matching genus, good idea to exit program here and prompt to force scheme
-                logger.error(f"no matching schemes for {finch_out.split(' ')[0]}, check available schemes with bart --schemes")
+                if len(genus_list) < 1: #More critical if no matching genus, exit program here and prompt to force scheme
+                    logger.error(f"no matching schemes for {finch_out.split(' ')[0]}"
+                                 f", check available schemes with bart --schemes")
+                    continue
 
-            elif len(d) == 1:
-                logger.info(f"genus match for scheme {d[0]}")
-                scheme = d[0]
+                elif len(genus_list) == 1:
+                    logger.info(f"genus match for scheme {genus_list[0]}")
+                    scheme = genus_list[0]
 
-            elif len(d) > 1:  # check species now, if #1/#2 like in Ab, need to account for that
-                logger.info(f"{len(d)} matching schemes for genus {finch_out.split(' ')[0]}")
-                species, s = set([g.split('_')[1].split('#')[0] for g in d]), []
-                for i in species:
-                    if SequenceMatcher(None, finch_out.split(' ')[1], i).ratio() == 1:
-                        s = [k for k in d if i in k]
+                else: #check species now
+                    logger.info(f"{len(genus_list)} matching schemes for genus {finch_out.split(' ')[0]}")
+                    species_list = list(set([g.split('_', 1)[1] for g in genus_list]))
+                    for s in species_list:
+                        if species in s:
+                            scheme = f'{genus}_{s}'
+                            logger.info(f"matched {species} to {scheme}")
+                            break
 
-                if len(s) < 1:
-                    logger.warning(f"no matching schemes for species {finch_out.split(' ')[1]}")
-                    # first go with spp, then try genus scheme with most alleles
-                    if 'spp' in species:
-                        d = [k for k in d if 'spp' in k]
-                    else:
-                        top_profiles = 0
-                        for i in species:
-                            with open(f'{db_path}/mapping/{finch_out.split(" ")[0]}_{i}.tab', "r") as f:
-                                profiles = len(f.readlines())
-                                if profiles > top_profiles:
-                                    top_profiles = profiles
-                                    d = [f'{finch_out.split(" ")[0]}_{i}']
-                    scheme = d[0]
-                    logger.warning(f"{d[0]} might cover your species")
+                    if not scheme:  #check to see if species is included in any schemes for genus
+                        logger.warning(f'no matching schemes for {species}')
+                        for i in genus_list:
+                            with open(f'{db_path}/mapping/{i}.tab') as f:
+                                if species in f.read():
+                                    scheme = i
+                                    logger.info(f'{scheme} covers {species}')
+                                    break
 
-                else:
-                    logger.info(f"matched species {finch_out.split(' ')[1]} to scheme {s[0]}")
-                    scheme = s[0]
+                    if not scheme:  #check spp or complex schemes
+                        for s in species_list:
+                            if 'spp' in s or 'complex' in s:
+                                scheme = f'{genus}_{s}'
+                                logger.info(f"{scheme} might cover your species")
+                                break
 
-        ipe(pairs[name], f'/tmp/{sample}', str(args.percid),
+                    if not scheme: #finally give up
+                        logger.error(f"check available schemes with bart --schemes")
+                        continue
+
+##### Run Mapping #####
+        ipe(pairs[reads], f'/tmp/{sample}', str(args.percid),
             f'{db_path}/indexes/{scheme}', threads)
 
-        # make a dictionary of kma results where allele is the key
         with open(f'/tmp/{sample}.res', newline='\n') as res:
         #with open('/tmp/1907353.res', newline='\n') as res:
             r = res.read().splitlines()
-        res_dict = {}
+        res_dict = {} # make a dictionary of kma results where allele is the key
         for line in r[1:]:
-            v = line.split('\t')
-            v = [x.strip(' ') for x in v]
+            v = [x.strip(' ') for x in line.split('\t')]
             k = v[0].rsplit('_', 1)[0]
             v[0] = v[0].rsplit('_', 1)[1]
             if k in list(res_dict):
@@ -183,11 +189,11 @@ def main():
             logger.error('no hits found')
             continue
 
-        # make a dictionary of the scheme where ST is the key
+##### Assign Profile #####
         with open(f'{db_path}/mapping/{scheme}.tab', newline='\n') as tab:
         #with open('/home/tom/PycharmProjects/bart/db/mapping/Enterobacter_cloacae.tab', newline='\n') as tab:
             s = tab.read().splitlines()
-        headers, scheme_dict = s[0].split('\t')[1:], {}
+        headers, scheme_dict = s[0].split('\t')[1:], {}  # make a dictionary of the scheme where ST is the key
         for line in s[1:]: #first column is ST
             v = line.split('\t')
             scheme_dict[int(v[0])] = {headers[i]: v[1:][i] for i in range(len(headers))}
@@ -195,8 +201,7 @@ def main():
         # make a list of only genes in headers
         genes, exact, no_hit = [g for g in headers if g not in ['clonal_complex', 'species', 'CC', 'Lineage']], [], []
 
-        # add info in output header for non-exact matches and make a list of genes with exact matches
-        for x, i in enumerate(headers):
+        for x, i in enumerate(headers):  # add info in output header for non-exact matches and make a list of genes with exact matches
             if i in genes:
                 if i in res_dict.keys():
                     if float(res_dict[i][4]) < 100 and float(res_dict[i][5]) < 100:
@@ -223,10 +228,9 @@ def main():
         if len(not_exact) >= 1:
             logger.info(f'potential novel allele for {", ".join(not_exact)}')
 
-        # Profile Choosing
         exact = list({*genes} ^ {*not_exact})
-        profile_dict = dict(scheme_dict)
-        # need to make a copy in case no matches and scheme dict is deleted (not pythonic)
+        profile_dict = dict(scheme_dict) #need to make a copy in case no matches and scheme dict is deleted (not pythonic)
+
         if args.exact is False:
             for i in not_exact:
                 logger.info(f'assuming {res_dict[i][0]} is closest allele for {i}')
@@ -257,11 +261,11 @@ def main():
                     if scheme_dict[st][i] != res_dict[i][0]:
                         profile_dict.pop(st)
 
-        # Printing output to tab-separated STDOUT for piping
+##### Printing output #####
         info = []
         if args.info:
             if not os.path.isfile(sketch):
-                finch.sketch_input(finch_binary, pairs[name], sketch)
+                finch.sketch_input(finch_binary, pairs[reads], sketch)
             info = finch.info(sketch, finch_binary)
         if len(info) > 0:
             headers += ['genome_size', 'ave_depth', '%GC']
@@ -291,9 +295,9 @@ def main():
             outfile = args.o
             if outfile == '':
                 delim = '.'
-                if '_' in pairs[name][0]:
+                if '_' in pairs[reads][0]:
                     delim = '_'
-                outfile = f'{pairs[name][0].split(delim, 1)[0]}_alleles.fna'
+                outfile = f'{pairs[reads][0].split(delim, 1)[0]}_alleles.fna'
             with open(f'/tmp/{sample}.fsa', newline='\n') as fna, open(outfile, 'wt') as out:
                 for seq in fna.read().split('>')[1:]:
                     for k, v in res_dict.items():
@@ -304,7 +308,7 @@ def main():
                                 out.write('>{}_{}\n{}'.format(k, v[0], seq.split("\n", 1)[1]))
             logger.info(f'written alleles to {outfile}')
 
-        # Cleanup
+##### Cleanup #####
         if not args.k:
             logger.info(f'cleaning up files in /tmp/')
             for f in os.listdir('/tmp/'):
