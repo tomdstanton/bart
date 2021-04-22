@@ -101,6 +101,9 @@ def main():
 ##### Loop over read-pair dict #####
     for reads in list(pairs):
         sample = os.path.basename(reads)
+        if len(pairs[reads]) < 2:
+            logger.error(f'no pair pair found for {sample}: {" ".join(pairs[reads])}')
+            continue
         logger.info(f'read pair for {sample}: {" ".join(pairs[reads])}')
         sketch = f'/tmp/{sample}.sk'
         if args.scheme is not None:
