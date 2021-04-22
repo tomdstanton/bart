@@ -112,17 +112,17 @@ def main():
             logger.info(f'{" ".join(cmd)}')
             child = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
             info = child[1].decode('utf-8').splitlines()[0:1]
-            mash_out = child[0].decode('utf-8').splitlines()[1].split('\t')
-            logger.info(f'closest refseq genome is {mash_out[1]}')
-            organism, genus, species = mash_out[6], mash_out[7], mash_out[6].split(' ')[1]
+            mash_out = child[0].decode('utf-8').splitlines()[1].split('\t')[1]
+            logger.info(f'closest refseq genome is {mash_out}')
+            genus, species = mash_out.split(' ')[0], mash_out.split(' ')[1]
             schemes = [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]
             scheme = ''
 
             # First check genus
-            if 'Shigella' in organism or 'Escherichia coli' in organism:
+            if 'Shigella' in mash_out or 'Escherichia coli' in mash_out:
                 scheme = 'Escherichia_coli#1'
                 logger.warning(f'defaulting to {scheme}, use --scheme to override this behavior')
-            elif 'baumannii' in organism:
+            elif 'baumannii' in mash_out:
                 scheme = 'Acinetobacter_baumannii#2'
                 logger.warning(f'defaulting to {scheme}, use --scheme to override this behavior')
             else:
@@ -242,7 +242,6 @@ def main():
                         profile_dict.pop(st)
 
             if len(profile_dict) < 1:
-                logger.info(f'no profile matches, dropping {", ".join(not_exact)}')
                 profile_dict = dict(scheme_dict)
                 for i in exact:
                     for st in list(profile_dict.keys()):
