@@ -122,7 +122,7 @@ def main():
             genus, species = finch_out.split(' ')[0], finch_out.split(' ')[1]
             scheme = ''
             # First check genus
-            if 'Shigella' in finch_out:
+            if 'Shigella' in finch_out or 'Escherichia coli' in finch_out:
                 scheme = 'Escherichia_coli#1'
                 logger.warning(f'defaulting to {scheme}, use --scheme to override this behavior')
             elif 'baumannii' in finch_out:
