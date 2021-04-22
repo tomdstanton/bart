@@ -85,6 +85,7 @@ $ bart SRR14224855* --scheme Staphylococcus_aureus
 * (*) indicates alleles have less than 100% identity
 * (?) indicates alleles have less than 100% coverage
 * (!) indicates alleles have less than 100% coverage and identity
+* (#) indicates not hit for alleles
 
 It looks like we have a novel allele for _arcC_ !!
 
