@@ -102,7 +102,7 @@ def main():
     for reads in list(pairs):
         sample = os.path.basename(reads)
         if len(pairs[reads]) < 2:
-            logger.error(f'no pair pair found for {sample}: {" ".join(pairs[reads])}')
+            logger.error(f'no read pair found for {sample}: {" ".join(pairs[reads])}')
             continue
         logger.info(f'read pair for {sample}: {" ".join(pairs[reads])}')
         sketch = f'/tmp/{sample}.sk'
@@ -124,10 +124,10 @@ def main():
             # First check genus
             if 'Shigella' in finch_out:
                 scheme = 'Escherichia_coli#1'
-                logger.warning(f'Defaulting to {scheme}, use --scheme to override this behavior')
+                logger.warning(f'defaulting to {scheme}, use --scheme to override this behavior')
             elif 'baumannii' in finch_out:
                 scheme = 'Acinetobacter_baumannii#2'
-                logger.warning(f'Defaulting to {scheme}, use --scheme to override this behavior')
+                logger.warning(f'defaulting to {scheme}, use --scheme to override this behavior')
             else:
                 genus_list = [s for s in schemes if genus in s]
 
