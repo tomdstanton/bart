@@ -46,7 +46,6 @@ $ bart paired-end-reads.fq(.gz) [options] > mlst.tab
   --scheme [scheme]  force scheme, see bart-update -s
   --exact            match profile from exact hits only
   --percid [95]      template percent identity cutoff
-  --info             add genome size, depth & %GC to output
   -o [input path]    export alleles to fasta
   -k                 keep temporary files
   -l [cwd]           create logfile

@@ -28,7 +28,6 @@ def parse_args():
     options.add_argument('--scheme', metavar='scheme', nargs='?', type=str, const='', help='''force scheme, see bart-update -s''')
     options.add_argument('--exact', action='store_true', default=False, help='''match profile from exact hits only''')
     options.add_argument('--percid', type=int, metavar='[95]', default=95, help='''template percent cutoff''')
-    options.add_argument('--info', action='store_true', default=False, help='''add genome info to output table''')
     options.add_argument('-o', metavar='input path', nargs='?', type=str, const='', help='''export alleles to fasta''')
     options.add_argument('-k', action='store_true', default=False, help='''keep temporary files''')
     options.add_argument('-l', metavar='cwd', nargs='?', type=str, const='', help='''create logfile''')
@@ -103,7 +102,6 @@ def main():
             if not args.scheme in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
                 exit(logger.error(f'{args.scheme} not a valid scheme, use bart-update -s to see valid schemes'))
             else:
-                info = []
                 scheme = args.scheme
 
 ##### Choose Scheme #####
@@ -111,7 +109,8 @@ def main():
             cmd = ['refseq_masher', 'matches', pairs[reads][0]]
             logger.info(f'{" ".join(cmd)}')
             child = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
-            info = child[1].decode('utf-8').splitlines()[0:1]
+            for line in child[1].decode('utf-8').splitlines():
+                logger.info(line.lower())
             mash_out = child[0].decode('utf-8').splitlines()[1].split('\t')[1]
             logger.info(f'closest refseq genome is {mash_out}')
             genus, species = mash_out.split(' ')[0], mash_out.split(' ')[1]
@@ -263,15 +262,11 @@ def main():
                         profile_dict.pop(st)
 
 ##### Printing output #####
-        if args.info and len(info) > 0:
-            headers += ['genome_size', 'ave_depth']
         print('Sample\tScheme\tST\t' + "\t".join([str(x) for x in headers]))
         if len(profile_dict) == 0:
             out = sample + '\t' + scheme + '\t' + '-'
             for gene in res_dict.keys():
                 out += '\t' + res_dict[gene][0]
-            if args.info and len(info) > 0:
-                out += '\t{}\t{}'.format(float(info[0].split(':')[1]), info[1].split(':    ')[1])
             print(out)
         else:
             for st in profile_dict.keys():
@@ -282,8 +277,6 @@ def main():
                             out += '\t' + v
                     else:
                         out += '\t-'
-                if args.info and len(info) > 0:
-                    out += '\t{}\t{}'.format(float(info[0].split(':')[1]), info[1].split(':    ')[1])
                 print(out)
 
         if args.o is not None:
