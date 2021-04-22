@@ -5,13 +5,13 @@ from re import search, compile
 from collections import defaultdict
 from argparse import ArgumentParser, SUPPRESS
 import os
+from subprocess import Popen, PIPE
 from pathlib import Path
 from time import time
 import logging
 from sys import version_info, platform
 from bart.version import __version__
 from bart.kma import ipe
-from bart import finch
 from bart.ascii import bart_ascii
 
 __author__ = "Tom Stanton"
@@ -58,13 +58,6 @@ def main():
     logger.info(f'this is bart {__version__} by {__author__}')
     logger.info(f'running on {platform} with Python {str(version_info[:3])[1:-1].replace(", ", ".")}')
 
-    if platform == 'linux':
-        finch_binary = f'{bin_path}/bart/finch-linux64-v0.3.0'
-    elif platform == 'darwin':
-        finch_binary = f'{bin_path}/bart/finch-mac64-v0.3.0'
-    else:
-        exit(logger.error(f'finch binary not compatible with {platform}'))
-
 ##### Check input #####
     threads = str(args.t)
     if args.t > os.cpu_count():
@@ -105,43 +98,46 @@ def main():
             logger.error(f'no read pair found for {sample}: {" ".join(pairs[reads])}')
             continue
         logger.info(f'read pair for {sample}: {" ".join(pairs[reads])}')
-        sketch = f'/tmp/{sample}.sk'
+
         if args.scheme is not None:
             if not args.scheme in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
                 exit(logger.error(f'{args.scheme} not a valid scheme, use bart-update -s to see valid schemes'))
             else:
+                info = []
                 scheme = args.scheme
-        else:
-            if not os.path.isfile(sketch):
-                finch.sketch_input(finch_binary, pairs[reads], sketch)
 
 ##### Choose Scheme #####
-            finch_out = finch.dist(sketch, db_path, finch_binary)
-            logger.info(f'closest refseq genome is {finch_out}')
+        else:
+            cmd = ['refseq_masher', 'matches', pairs[reads][0]]
+            logger.info(f'{" ".join(cmd)}')
+            child = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
+            info = child[1].decode('utf-8').splitlines()[0:1]
+            mash_out = child[0].decode('utf-8').splitlines()[1].split('\t')
+            logger.info(f'closest refseq genome is {mash_out[1]}')
+            organism, genus, species = mash_out[6], mash_out[7], mash_out[6].split(' ')[1]
             schemes = [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]
-            genus, species = finch_out.split(' ')[0], finch_out.split(' ')[1]
             scheme = ''
+
             # First check genus
-            if 'Shigella' in finch_out or 'Escherichia coli' in finch_out:
+            if 'Shigella' in organism or 'Escherichia coli' in organism:
                 scheme = 'Escherichia_coli#1'
                 logger.warning(f'defaulting to {scheme}, use --scheme to override this behavior')
-            elif 'baumannii' in finch_out:
+            elif 'baumannii' in organism:
                 scheme = 'Acinetobacter_baumannii#2'
                 logger.warning(f'defaulting to {scheme}, use --scheme to override this behavior')
             else:
                 genus_list = [s for s in schemes if genus in s]
 
-                if len(genus_list) < 1: #More critical if no matching genus, exit program here and prompt to force scheme
-                    logger.error(f"no matching schemes for {finch_out.split(' ')[0]}"
+                if not genus_list: #More critical if no matching genus, exit program here and prompt to force scheme
+                    logger.error(f"no matching schemes for {genus}"
                                  f", check available schemes with bart-update -s")
                     continue
-
                 elif len(genus_list) == 1:
                     logger.info(f"genus match for scheme {genus_list[0]}")
                     scheme = genus_list[0]
 
                 else: #check species now
-                    logger.info(f"{len(genus_list)} matching schemes for genus {finch_out.split(' ')[0]}")
+                    logger.info(f"{len(genus_list)} matching schemes for {genus}")
                     species_list = list(set([g.split('_', 1)[1] for g in genus_list]))
                     for s in species_list:
                         if species in s:
@@ -268,21 +264,15 @@ def main():
                         profile_dict.pop(st)
 
 ##### Printing output #####
-        info = []
-        if args.info:
-            if not os.path.isfile(sketch):
-                finch.sketch_input(finch_binary, pairs[reads], sketch)
-            info = finch.info(sketch, finch_binary)
-        if len(info) > 0:
-            headers += ['genome_size', 'ave_depth', '%GC']
+        if args.info and len(info) > 0:
+            headers += ['genome_size', 'ave_depth']
         print('Sample\tScheme\tST\t' + "\t".join([str(x) for x in headers]))
-
         if len(profile_dict) == 0:
             out = sample + '\t' + scheme + '\t' + '-'
             for gene in res_dict.keys():
                 out += '\t' + res_dict[gene][0]
-            if len(info) > 0:
-                out += '\t{}\t{}\t{}'.format(info[0], info[1], info[2])
+            if args.info and len(info) > 0:
+                out += '\t{}\t{}'.format(float(info[0].split(':')[1]), info[1].split(':    ')[1])
             print(out)
         else:
             for st in profile_dict.keys():
@@ -293,8 +283,8 @@ def main():
                             out += '\t' + v
                     else:
                         out += '\t-'
-                if len(info) > 0:
-                    out += '\t{}\t{}\t{}'.format(info[0], info[1], info[2])
+                if args.info and len(info) > 0:
+                    out += '\t{}\t{}'.format(float(info[0].split(':')[1]), info[1].split(':    ')[1])
                 print(out)
 
         if args.o is not None:

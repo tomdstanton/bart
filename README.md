@@ -29,7 +29,7 @@ https://github.com/tomdstanton/bart
 * Linux (might work on Mac, not tested)
 * python >=3.7
 * [kma](https://anaconda.org/bioconda/kma) (use conda)
-* [finch](https://github.com/onecodex/finch-rs) (binary included)
+* [refseq_masher](https://anaconda.org/bioconda/refseq_masher) (use conda)
 
 ## Installation
 Clone repo and install with python:
@@ -150,7 +150,3 @@ single-end and long reads is coming soon!
   BIGSdb software, the PubMLST.org website and their applications", 
   Wellcome Open Res 2018, 3:124
   ](https://doi.org/10.12688/wellcomeopenres.14826.1)
-  
-* [Bovee et al., (2018). Finch: a tool adding dynamic abundance filtering to genomic 
-MinHashing. Journal of Open Source Software, 3(22), 505
-](https://doi.org/10.21105/joss.00505)
