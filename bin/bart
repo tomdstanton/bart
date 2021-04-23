@@ -210,7 +210,7 @@ def main():
                     elif float(res_dict[i][4]) < 100:
                         headers[x] = f'{i}*'
                     elif float(res_dict[i][5]) < 100:
-                        headers[x] = f'{i}?'
+                        headers[x] = f'{i}~'
                     else:
                         exact.append(i) # make a list of genes with exact matches
                 else:
@@ -255,7 +255,7 @@ def main():
                     r = s  # this is a problem because the first ST will always be appended
                     t.append(1)
 
-            # eventually add logic that consideres multiple hits for genes, see sub_dict
+            # eventually add logic that considers multiple hits for genes, see sub_dict
 
             if len(t) > len(set(t)): # choose most likely STs from gene and exact matching, will appear twice
                 for st in set(t): # make top sts unique and iterate
@@ -273,7 +273,7 @@ def main():
 ##### Printing output #####
         print('Sample\tScheme\tST\t' + "\t".join([str(x) for x in headers]))
         if len(profile_dict) == 0:
-            out = sample + '\t' + scheme + '\t' + '-'
+            out = sample + '\t' + scheme + '\t' + '?'
             for gene in res_dict.keys():
                 out += '\t' + res_dict[gene][0]
             print(out)
@@ -281,7 +281,7 @@ def main():
             for st in profile_dict.keys():
                 out = sample + '\t' + scheme + '\t' + str(st)
                 for k, v in profile_dict[st].items():
-                    if k in [s.strip('?').strip('!').strip('*') for s in headers]:
+                    if k in [s.strip('~').strip('!').strip('*') for s in headers]:
                         if v != '':
                             out += '\t' + v
                     else:

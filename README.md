@@ -43,20 +43,21 @@ python setup.py develop
 $ bart paired-end-reads.fq(.gz) [options] > mlst.tab
 
 --options [defaults]:
-  --scheme [scheme]  force scheme, see bart-update -s
-  --exact            match profile from exact hits only
-  --percid [95]      template percent identity cutoff
-  -o [input path]    export alleles to fasta
-  -k                 keep temporary files
-  -l [cwd]           create logfile
-  -t [4]             number of threads
-  -q                 silence messages
-  -h                 show this help message and exit
+  -s [scheme]      force scheme, see bart-update -s
+  -p [95]          template percent cutoff
+  -o [input path]  export alleles to fasta
+  -k               keep temporary files
+  -l [cwd]         create logfile
+  -t [4]           threads
+  -q               silence messages
+  -h               show this help message and exit
 ```
 I like to test bart on SRA reads like so:
 ```
 $ fastq-dump SRR14224855 --split-files --gzip && bart SRR14224855*
 ```
+* This completed in 9.6 seconds on a 4-core laptop.
+
 If you already know the species of your reads
 or the specific scheme you would like to use, you can bypass
 scheme choosing heuristics. 
@@ -75,39 +76,16 @@ Staphylococcus_pseudintermedius
 ```
 Now you can run:
 ```
-$ bart SRR14224855* --scheme Staphylococcus_aureus
+$ bart SRR14224855* -s Staphylococcus_aureus
 ```
-| Sample      | Scheme                | ST   | arcC! | aroE | glpF | gmk | pta | tpi | yqiL | clonal_complex | 
-|-------------|-----------------------|------|-------|------|------|-----|-----|-----|------|----------------| 
-| SRR14224855 | Staphylococcus_aureus | 9    | 3     | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
+| Sample      | Scheme                | ST   | arcC | aroE | glpF | gmk | pta | tpi | yqiL | clonal_complex | 
+|-------------|-----------------------|------|------|------|------|-----|-----|-----|------|----------------| 
+| SRR14224855 | Staphylococcus_aureus | 9    | 3    | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
 
 * (*) indicates alleles have less than 100% identity
-* (?) indicates alleles have less than 100% coverage
+* (~) indicates alleles have less than 100% coverage
 * (!) indicates alleles have less than 100% coverage and identity
 * (#) indicates no hit for alleles
-
-It looks like we have a novel allele for _arcC_ !!
-
-By default, bart will assume that the allele for non-exact 
-hits is the most similar to the novel allele 
-and will assign a profile with this assumption.
-
-Passing the ```--exact``` flag with make
-bart display the closest profiles based on exact allele hits only.
-```
-$ bart SRR14224855* --scheme Staphylococcus_aureus --exact
-```
-| Sample      | Scheme                | ST   | arcC! | aroE | glpF | gmk | pta | tpi | yqiL | clonal_complex | 
-|-------------|-----------------------|------|-------|------|------|-----|-----|-----|------|----------------| 
-| SRR14224855 | Staphylococcus_aureus | 9    | 3     | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
-| SRR14224855 | Staphylococcus_aureus | 63   | 1     | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
-| SRR14224855 | Staphylococcus_aureus | 706  | 86    | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
-| SRR14224855 | Staphylococcus_aureus | 1569 | 244   | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
-| SRR14224855 | Staphylococcus_aureus | 2423 | 262   | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
-| SRR14224855 | Staphylococcus_aureus | 4987 | 5     | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
-| SRR14224855 | Staphylococcus_aureus | 5471 | 657   | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
-| SRR14224855 | Staphylococcus_aureus | 5717 | 331   | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
-| SRR14224855 | Staphylococcus_aureus | 6556 | 767   | 3    | 1    | 1   | 1   | 1   | 10   | CC1            |
 
 ### bart-update
 The ```bart-update``` script handles the scheme manipulation and has several options:
