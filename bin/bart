@@ -5,6 +5,7 @@ from re import search, compile
 from collections import defaultdict
 from argparse import ArgumentParser, SUPPRESS
 import os
+from difflib import SequenceMatcher
 from subprocess import Popen, PIPE
 from pathlib import Path
 from time import time
@@ -25,9 +26,8 @@ def parse_args():
     parser.add_argument('input', nargs='+', type=Path, help=SUPPRESS)
     parser.print_usage = parser.print_help
     options = parser.add_argument_group('--options [defaults]')
-    options.add_argument('--scheme', metavar='scheme', nargs='?', type=str, const='', help='''force scheme, see bart-update -s''')
-    options.add_argument('--exact', action='store_true', default=False, help='''match profile from exact hits only''')
-    options.add_argument('--percid', type=int, metavar='[95]', default=95, help='''template percent cutoff''')
+    options.add_argument('-s', metavar='scheme', nargs='?', type=str, const='', help='''force scheme, see bart-update -s''')
+    options.add_argument('-p', type=int, metavar='[95]', default=95, help='''template percent cutoff''')
     options.add_argument('-o', metavar='input path', nargs='?', type=str, const='', help='''export alleles to fasta''')
     options.add_argument('-k', action='store_true', default=False, help='''keep temporary files''')
     options.add_argument('-l', metavar='cwd', nargs='?', type=str, const='', help='''create logfile''')
@@ -43,6 +43,7 @@ def main():
     os.makedirs(f'{bin_path}/db/indexes', exist_ok=True)
     os.makedirs(f'{bin_path}/db/mapping', exist_ok=True)
     db_path = f'{bin_path}/db'
+    #db_path = '/home/tom/PycharmProjects/bart/db'
     logger = logging.getLogger('root')
     logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
     logger.setLevel(logging.DEBUG)
@@ -98,11 +99,11 @@ def main():
             continue
         logger.info(f'read pair for {sample}: {" ".join(pairs[reads])}')
 
-        if args.scheme is not None:
-            if not args.scheme in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
-                exit(logger.error(f'{args.scheme} not a valid scheme, use bart-update -s to see valid schemes'))
+        if args.s is not None:
+            if not args.s in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
+                exit(logger.error(f'{args.s} not a valid scheme, use bart-update -s to see valid schemes'))
             else:
-                scheme = args.scheme
+                scheme = args.s
 
 ##### Choose Scheme #####
         else:
@@ -117,7 +118,7 @@ def main():
             schemes = [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]
             scheme = ''
 
-            # First check genus
+            # FIRST SOME LOGIC
             if 'Shigella' in mash_out or 'Escherichia coli' in mash_out:
                 scheme = 'Escherichia_coli#1'
                 logger.warning(f'defaulting to {scheme}, use --scheme to override this behavior')
@@ -127,15 +128,16 @@ def main():
             else:
                 genus_list = [s for s in schemes if genus in s]
 
-                if not genus_list: #More critical if no matching genus, exit program here and prompt to force scheme
+                if not genus_list: # critical if no matching genus, exit program here and prompt to force scheme
                     logger.error(f"no matching schemes for {genus}"
                                  f", check available schemes with bart-update -s")
                     continue
+
                 elif len(genus_list) == 1:
                     logger.info(f"genus match for scheme {genus_list[0]}")
                     scheme = genus_list[0]
 
-                else: #check species now
+                else: # check species now
                     logger.info(f"{len(genus_list)} matching schemes for {genus}")
                     species_list = list(set([g.split('_', 1)[1] for g in genus_list]))
                     for s in species_list:
@@ -144,7 +146,7 @@ def main():
                             logger.info(f"matched {species} to {scheme}")
                             break
 
-                    if not scheme:  #check to see if species is included in any schemes for genus
+                    if not scheme:  # check to see if species is included in any schemes for genus
                         logger.warning(f'no matching schemes for {species}')
                         for i in genus_list:
                             with open(f'{db_path}/mapping/{i}.tab') as f:
@@ -153,34 +155,33 @@ def main():
                                     logger.info(f'{scheme} covers {species}')
                                     break
 
-                    if not scheme:  #check spp or complex schemes
+                    if not scheme:  # check spp or complex schemes
                         for s in species_list:
                             if 'spp' in s or 'complex' in s:
                                 scheme = f'{genus}_{s}'
                                 logger.info(f"{scheme} might cover your species")
                                 break
 
-                    if not scheme: #finally give up
+                    if not scheme: # finally give up
                         logger.error("check available schemes with bart-update -s")
                         continue
 
-##### Run Mapping #####
-        ipe(pairs[reads], f'/tmp/{sample}', str(args.percid),
-            f'{db_path}/indexes/{scheme}', threads)
-
+##### Run mapping and parse results #####
+        ipe(pairs[reads], f'/tmp/{sample}', str(args.p), f'{db_path}/indexes/{scheme}', threads)
         with open(f'/tmp/{sample}.res', newline='\n') as res:
-        #with open('/tmp/1907353.res', newline='\n') as res:
+        #with open('/tmp/1398028.res', newline='\n') as res:
             r = res.read().splitlines()
-        res_dict = {} # make a dictionary of kma results where allele is the key
+        res_dict, sub_dict = {}, {} # make a dictionary of kma results where allele is the key
         for line in r[1:]:
             v = [x.strip(' ') for x in line.split('\t')]
             k = v[0].rsplit('_', 1)[0]
             v[0] = v[0].rsplit('_', 1)[1]
             if k in list(res_dict):
-                if float(v[4]) > float(res_dict[k][4]):
+                if float(v[4]) > float(res_dict[k][4]): # if 2 alleles, choose the one matching [4]
+                    sub_dict[k] = res_dict[k]
                     res_dict[k] = v
                 else:
-                    continue
+                    sub_dict[k] = v
             else:
                 res_dict[k] = v
 
@@ -190,7 +191,7 @@ def main():
             logger.error('no hits found')
             continue
 
-##### Assign Profile #####
+##### Assign profile via a range of methods #####
         with open(f'{db_path}/mapping/{scheme}.tab', newline='\n') as tab:
         #with open('/home/tom/PycharmProjects/bart/db/mapping/Enterobacter_cloacae.tab', newline='\n') as tab:
             s = tab.read().splitlines()
@@ -201,8 +202,7 @@ def main():
 
         # make a list of only genes in headers
         genes, exact, no_hit = [g for g in headers if g not in ['clonal_complex', 'species', 'CC', 'Lineage']], [], []
-
-        for x, i in enumerate(headers):  # add info in output header for non-exact matches and make a list of genes with exact matches
+        for x, i in enumerate(headers):  # add info in output header for non-exact matches
             if i in genes:
                 if i in res_dict.keys():
                     if float(res_dict[i][4]) < 100 and float(res_dict[i][5]) < 100:
@@ -212,7 +212,7 @@ def main():
                     elif float(res_dict[i][5]) < 100:
                         headers[x] = f'{i}?'
                     else:
-                        exact.append(i)
+                        exact.append(i) # make a list of genes with exact matches
                 else:
                     no_hit.append(i)
                     headers[x] = f'{i}#'
@@ -224,42 +224,51 @@ def main():
                             exact.append(i)
                             break
 
-        [genes.remove(gene) for gene in no_hit if gene not in exact]
-        not_exact = list({*exact} ^ {*res_dict.keys()})
-        if len(not_exact) >= 1:
-            logger.info(f'potential novel allele for {", ".join(not_exact)}')
+        [genes.remove(gene) for gene in no_hit if gene not in exact] # remove no-hits if scheme doesn't consider 0 as allele
+        not_exact = list({*exact} ^ {*res_dict.keys()}) # make a list of non-exact genes
 
-        exact = list({*genes} ^ {*not_exact})
-        profile_dict = dict(scheme_dict) #need to make a copy in case no matches and scheme dict is deleted (not pythonic)
+        # Quickly filter profiles based on exact hits #
+        profile_dict = dict(scheme_dict)
+        for i in exact:
+            for st in list(profile_dict.keys()):
+                if scheme_dict[st][i] != res_dict[i][0]:
+                    profile_dict.pop(st)
 
-        if args.exact is False:
-            for i in not_exact:
-                logger.info(f'assuming {res_dict[i][0]} is closest allele for {i}')
-            for i in genes:
-                for st in list(profile_dict.keys()):
-                    if scheme_dict[st][i] != res_dict[i][0]:
-                        profile_dict.pop(st)
+        # Use LCS to find closest profiles #
+        if len(profile_dict) != 1:
+            r, t = 0, []
+            profile = [res_dict[gene][0] for gene in exact]
+            for st in scheme_dict.keys():
+                seqs = [scheme_dict[st][gene] for gene in genes], [scheme_dict[st][gene] for gene in exact]
+                for seq in seqs: # gene and exact matching can give different results, so run both
+                    s = SequenceMatcher(None, profile, seq).ratio()
+                    if s > r:
+                        r = s # this is a problem because the first ST will always be appended
+                        t.append(st)
 
-            if len(profile_dict) < 1:
-                profile_dict = dict(scheme_dict)
-                for i in exact:
-                    for st in list(profile_dict.keys()):
-                        if scheme_dict[st][i] != res_dict[i][0]:
-                            profile_dict.pop(st)
+            t = [i for i in t if i != 1] # remove result for ST1, assumes first ST in scheme is always 1
+            # repeat for first ST
+            seqs = [scheme_dict[1][gene] for gene in genes], [scheme_dict[1][gene] for gene in exact]
+            for seq in seqs:
+                s = SequenceMatcher(None, profile, seq).ratio()
+                if s > r:
+                    r = s  # this is a problem because the first ST will always be appended
+                    t.append(1)
 
-            if len(profile_dict) > 1:
-                logger.info(f'no exact profile match, displaying {len(profile_dict)} close matches')
+            # eventually add logic that consideres multiple hits for genes, see sub_dict
 
-            if len(profile_dict) == 0:
-                logger.error(f'no profile matches')
+            if len(t) > len(set(t)): # choose most likely STs from gene and exact matching, will appear twice
+                for st in set(t): # make top sts unique and iterate
+                    if t.count(st) == 2: # max value is 2
+                        profile_dict[st] = scheme_dict[st]
+            else:
+                for st in t:
+                    profile_dict[st] = scheme_dict[st]
 
-        if args.exact is True:
-            logger.info(f'only considering exact hits for profile matching: {", ".join(exact)}')
-            profile_dict = dict(scheme_dict)
-            for i in exact:
-                for st in list(profile_dict.keys()):
-                    if scheme_dict[st][i] != res_dict[i][0]:
-                        profile_dict.pop(st)
+            if len(profile_dict) != 0:
+                logger.info(f'displaying {len(profile_dict)} profile(s) with {int(r * 100)}% match')
+            else:
+                logger.warning(f'no profile matches')
 
 ##### Printing output #####
         print('Sample\tScheme\tST\t' + "\t".join([str(x) for x in headers]))
@@ -268,7 +277,7 @@ def main():
             for gene in res_dict.keys():
                 out += '\t' + res_dict[gene][0]
             print(out)
-        else:
+        else: # just print results if no profile match
             for st in profile_dict.keys():
                 out = sample + '\t' + scheme + '\t' + str(st)
                 for k, v in profile_dict[st].items():

@@ -18,7 +18,7 @@ def ipe(reads, outfile, percid, scheme, threads):
     cmd = ['kma', '-ipe', reads[0], reads[1],
            '-ID', percid,
            '-1t1',
-           '-apm', 'u',
+           '-apm', 'f',
            '-o', outfile, '-t_db', scheme, '-t', threads]
 
     logger.info(f'{" ".join(cmd)}')
