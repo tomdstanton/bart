@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from re import search, compile
+from re import search, compile, sub
 from collections import defaultdict
 from argparse import ArgumentParser, SUPPRESS
 import os
@@ -42,8 +42,8 @@ def main():
     bin_path = os.path.join(os.path.dirname(os.path.dirname(__file__)))
     os.makedirs(f'{bin_path}/db/indexes', exist_ok=True)
     os.makedirs(f'{bin_path}/db/mapping', exist_ok=True)
-    db_path = f'{bin_path}/db'
-    #db_path = '/home/tom/PycharmProjects/bart/db'
+    #db_path = f'{bin_path}/db'
+    db_path = '/home/tom/PycharmProjects/bart/db'
     logger = logging.getLogger('root')
     logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
     logger.setLevel(logging.DEBUG)
@@ -94,7 +94,7 @@ def main():
 ##### Loop over read-pair dict #####
     for reads in list(pairs):
         sample = os.path.basename(reads)
-        if len(pairs[reads]) < 2:
+        if len(pairs[reads]) != 2:
             logger.error(f'no read pair found for {sample}: {" ".join(pairs[reads])}')
             continue
         logger.info(f'read pair for {sample}: {" ".join(pairs[reads])}')
@@ -112,7 +112,7 @@ def main():
             child = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
             for line in child[1].decode('utf-8').splitlines():
                 logger.info(line.lower())
-            mash_out = child[0].decode('utf-8').splitlines()[1].split('\t')[1]
+            mash_out = sub(r'\W+', '', child[0].decode('utf-8').splitlines()[1].split('\t')[1])
             logger.info(f'closest refseq genome is {mash_out}')
             genus, species = mash_out.split(' ')[0], mash_out.split(' ')[1]
             schemes = [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]
@@ -169,7 +169,7 @@ def main():
 ##### Run mapping and parse results #####
         ipe(pairs[reads], f'/tmp/{sample}', str(args.p), f'{db_path}/indexes/{scheme}', threads)
         with open(f'/tmp/{sample}.res', newline='\n') as res:
-        #with open('/tmp/1398028.res', newline='\n') as res:
+        #with open('/tmp/1483797.res', newline='\n') as res:
             r = res.read().splitlines()
         res_dict, sub_dict = {}, {} # make a dictionary of kma results where allele is the key
         for line in r[1:]:
@@ -177,7 +177,7 @@ def main():
             k = v[0].rsplit('_', 1)[0]
             v[0] = v[0].rsplit('_', 1)[1]
             if k in list(res_dict):
-                if float(v[4]) > float(res_dict[k][4]): # if 2 alleles, choose the one matching [4]
+                if float(v[4]) > float(res_dict[k][4]): # if 2 alleles, choose highest percid [4], [2] might be better
                     sub_dict[k] = res_dict[k]
                     res_dict[k] = v
                 else:
@@ -193,10 +193,10 @@ def main():
 
 ##### Assign profile via a range of methods #####
         with open(f'{db_path}/mapping/{scheme}.tab', newline='\n') as tab:
-        #with open('/home/tom/PycharmProjects/bart/db/mapping/Enterobacter_cloacae.tab', newline='\n') as tab:
+        #with open('/home/tom/PycharmProjects/bart/db/mapping/Citrobacter_freundii.tab', newline='\n') as tab:
             s = tab.read().splitlines()
         headers, scheme_dict = s[0].split('\t')[1:], {}  # make a dictionary of the scheme where ST is the key
-        for line in s[1:]: #first column is ST
+        for line in s[1:]: # first column is ST
             v = line.split('\t')
             scheme_dict[int(v[0])] = {headers[i]: v[1:][i] for i in range(len(headers))}
 
@@ -224,7 +224,8 @@ def main():
                             exact.append(i)
                             break
 
-        [genes.remove(gene) for gene in no_hit if gene not in exact] # remove no-hits if scheme doesn't consider 0 as allele
+        # remove no-hits if scheme doesn't consider 0 as allele
+        [genes.remove(gene) for gene in no_hit if gene not in exact]
         not_exact = list({*exact} ^ {*res_dict.keys()}) # make a list of non-exact genes
 
         # Quickly filter profiles based on exact hits #
@@ -236,37 +237,52 @@ def main():
 
         # Use LCS to find closest profiles #
         if len(profile_dict) != 1:
-            r, t = 0, []
-            profile = [res_dict[gene][0] for gene in exact]
-            for st in scheme_dict.keys():
-                seqs = [scheme_dict[st][gene] for gene in genes], [scheme_dict[st][gene] for gene in exact]
-                for seq in seqs: # gene and exact matching can give different results, so run both
-                    s = SequenceMatcher(None, profile, seq).ratio()
+            logger.info(f'{len(profile_dict)} exact profile matches, finding closest')
+            profile_dict = {}
+            def profile_LCS(in_dict):
+                r, t = 0.1, [] # set ratio to 0.1 to filter low hits
+                profile = [in_dict[gene][0] for gene in genes]
+                for st in scheme_dict.keys():
+                    seqs = [scheme_dict[st][gene] for gene in genes], [scheme_dict[st][gene] for gene in exact]
+                    for seq in seqs: # gene and exact matching can give different results, so run both
+                        s = SequenceMatcher(None, profile, seq).ratio()
+                        if s > r:
+                            r = s # this is a problem because the first ST will always be appended
+                            t.append(st)
+                t = [i for i in t if i != 1] # remove result for ST1, assumes first ST in scheme is always 1
+                # repeat for first ST
+                seqs = [scheme_dict[1][gene] for gene in genes], [scheme_dict[1][gene] for gene in exact]
+                for seq in seqs:
+                    s = SequenceMatcher(None, seq, profile).ratio()
                     if s > r:
-                        r = s # this is a problem because the first ST will always be appended
-                        t.append(st)
+                        r = s
+                        t.append(1)
+                return r, t
 
-            t = [i for i in t if i != 1] # remove result for ST1, assumes first ST in scheme is always 1
-            # repeat for first ST
-            seqs = [scheme_dict[1][gene] for gene in genes], [scheme_dict[1][gene] for gene in exact]
-            for seq in seqs:
-                s = SequenceMatcher(None, profile, seq).ratio()
-                if s > r:
-                    r = s  # this is a problem because the first ST will always be appended
-                    t.append(1)
+            ratio, topst = profile_LCS(res_dict)
 
-            # eventually add logic that considers multiple hits for genes, see sub_dict
+            if len(sub_dict) > 0: # see sub-hits match profiles better
+                for gene in sub_dict.keys():
+                    tmp_dict = dict(res_dict)
+                    tmp_dict[gene] = sub_dict[gene]
+                    r_sub, t_sub = profile_LCS(tmp_dict)
+                    if r_sub > ratio:
+                        logger.info(f'sub-hit {gene}_{sub_dict[gene][0]} matches '
+                                    f'{len(t_sub)} profiles at {int(r_sub * 100)}% '
+                                    f'compared to {int(ratio * 100)}% for {gene}_{res_dict[gene][0]}')
+                        ratio, res_dict[gene] = r_sub, sub_dict[gene]
+                        topst += t_sub
 
-            if len(t) > len(set(t)): # choose most likely STs from gene and exact matching, will appear twice
-                for st in set(t): # make top sts unique and iterate
-                    if t.count(st) == 2: # max value is 2
+            if len(topst) > len(set(topst)): # choose most likely STs from gene and exact matching, will appear twice
+                for st in set(topst): # make top sts unique and iterate
+                    if topst.count(st) == 2: # max value is 2
                         profile_dict[st] = scheme_dict[st]
             else:
-                for st in t:
+                for st in topst:
                     profile_dict[st] = scheme_dict[st]
 
             if len(profile_dict) != 0:
-                logger.info(f'displaying {len(profile_dict)} profile(s) with {int(r * 100)}% match')
+                logger.info(f'displaying {len(profile_dict)} profile(s) with {int(ratio * 100)}% match')
             else:
                 logger.warning(f'no profile matches')
 
