@@ -112,9 +112,9 @@ def main():
             child = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
             for line in child[1].decode('utf-8').splitlines():
                 logger.info(line.lower())
-            mash_out = sub(r'\W+', '', child[0].decode('utf-8').splitlines()[1].split('\t')[1])
+            mash_out = child[0].decode('utf-8').splitlines()[1].split('\t')[1]
             logger.info(f'closest refseq genome is {mash_out}')
-            genus, species = mash_out.split(' ')[0], mash_out.split(' ')[1]
+            genus, species = sub(r'\W+', '', mash_out.split(' ')[0]), sub(r'\W+', '', mash_out.split(' ')[1])
             schemes = [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]
             scheme = ''
 
