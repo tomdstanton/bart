@@ -56,7 +56,7 @@ I like to test bart on SRA reads like so:
 ```
 $ fastq-dump SRR14224855 --split-files --gzip && bart SRR14224855*
 ```
-* This completed in 9.6 seconds on a 4-core laptop.
+* MLST completed in 9.6 seconds on a 4-core laptop.
 
 If you already know the species of your reads
 or the specific scheme you would like to use, you can bypass
@@ -82,10 +82,14 @@ $ bart SRR14224855* -s Staphylococcus_aureus
 |-------------|-----------------------|------|------|------|------|-----|-----|-----|------|----------------| 
 | SRR14224855 | Staphylococcus_aureus | 9    | 3    | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
 
-* (*) indicates alleles have less than 100% identity
-* (~) indicates alleles have less than 100% coverage
-* (!) indicates alleles have less than 100% coverage and identity
-* (#) indicates no hit for alleles
+* ```*``` indicates alleles have less than 100% identity
+* ```~``` indicates alleles have less than 100% coverage
+* ```!``` indicates alleles have less than 100% coverage and identity
+* ```#``` indicates no hit for alleles
+
+bart will first use exact hits to assign a profile. Failing this, bart then uses a 
+Ratcliff and Obershelp algorithm implementation to assign the closest profile(s) based on 
+alleleic combinations of exact-, and near- hits.
 
 ### bart-update
 The ```bart-update``` script handles the scheme manipulation and has several options:
