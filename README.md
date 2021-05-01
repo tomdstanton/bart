@@ -105,8 +105,22 @@ file in the PubMLST format. Check out an example
 and 
 [mapping](https://rest.pubmlst.org/db/pubmlst_mflocculare_seqdef/schemes/1/profiles_csv)
 file.
+
+For example, if I wanted to search for and type IncN-type plasmids in my reads, I simply download the 
+sequences and scheme from [PubMLST](https://pubmlst.org/bigsdb?db=pubmlst_plasmid_seqdef&page=schemeInfo&scheme_id=4)
+and run:
 ```
-$ bart-update -a scheme.fna scheme.tab
+$ bart-update -a IncN*
+14:46:28 | this is bart 0.0.9 by Tom Stanton
+14:46:28 | running on linux with Python 3.7.10
+14:46:28 | adding scheme from: IncN.fasta, IncN.tab
+14:46:28 | IncN.fasta is a valid fasta file
+14:46:28 | IncN.tab is a valid mapping file
+14:46:28 | kma index -i -- -o /home/tom/PycharmProjects/bart/db/indexes/IncN
+```
+Now I can run:
+```
+$ bart * -s IncN
 ```
 Sometimes there are 2 schemes for a species which is problematic because
 the heuristics will pick the same one every time. For _A. baumannii_,
