@@ -2,7 +2,7 @@ from setuptools import setup
 from distutils.util import convert_path
 
 main_ns = {}
-ver_path = convert_path('bart/version.py')
+ver_path = convert_path('bart/scripts/version.py')
 with open(ver_path) as ver_file:
     exec(ver_file.read(), main_ns)
 
@@ -23,7 +23,7 @@ setup(
     ],
     packages=['bart'],
     python_requires=">=3.7",
-    scripts=['bin/bart', 'bin/bart-update'],
+    scripts=['bart/bart', 'bart/bart-update'],
     keywords='microbial genomics amr virulence',
     install_requires='requests',
     zip_safe=False,

@@ -2,16 +2,14 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser
-import os
+import os, logging, asyncio
 from re import DOTALL, findall
 from requests import get
 from pathlib import Path
-import logging
-import asyncio
 from shutil import copyfile
 from sys import version_info, platform, argv
-from bart.version import __version__
-from bart.kma import index
+from bart.scripts.version import __version__
+from bart.scripts.kma import index
 
 __author__ = "Tom Stanton"
 __license__ = "MIT"
@@ -24,6 +22,7 @@ def parse_args():
     parser.print_usage = parser.print_help
     options = parser.add_argument_group('--options [defaults]')
     options.add_argument('-s', action='store_true', default=False, help='print available MLST schemes')
+    options.add_argument('-S', action='store_true', default=False, help='-s with genes')
     options.add_argument('-p', action='store_true', default=False, help='update pubMLST schemes')
     options.add_argument('-a', metavar='', nargs='*', type=Path, help='path to custom scheme fasta and csv')
     options.add_argument('-r', metavar='', type=str, nargs='*', help='name of scheme(s) to remove')
@@ -35,10 +34,11 @@ def parse_args():
 
 
 def main():
-    bin_path = os.path.join(os.path.dirname(os.path.dirname(__file__)))
+    bin_path = Path(__file__).parent.absolute()
+    db_path = f'{bin_path}/db'
+    os.makedirs(db_path, exist_ok=True)
     os.makedirs(f'{bin_path}/db/indexes', exist_ok=True)
     os.makedirs(f'{bin_path}/db/mapping', exist_ok=True)
-    db_path = f'{bin_path}/db'
     logger = logging.getLogger('root')
     logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
     logger.setLevel(logging.DEBUG)
@@ -46,6 +46,14 @@ def main():
 
     if args.s:
         d = [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]
+        exit(print(*sorted(d), sep="\n"))
+
+    if args.S:
+        d = []
+        for f in os.scandir(f'{db_path}/mapping/'):
+            with open(f) as file:
+                l = file.readline()
+                d.append(l.replace(l.split('\t')[0], f.name.split('.')[0]).strip())
         exit(print(*sorted(d), sep="\n"))
 
     logger.info(f'this is bart {__version__} by {__author__}')
