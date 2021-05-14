@@ -5,14 +5,14 @@ from re import search, compile
 from collections import defaultdict
 from argparse import ArgumentParser, SUPPRESS
 import os, logging
-from difflib import SequenceMatcher
+from collections import Counter
 from pathlib import Path
 from time import time
 from sys import version_info, platform
 import bart
 from bart.scripts.version import __version__
 from bart.scripts.kma import ipe
-from bart.scripts.refseq_masher import choose_scheme
+from bart.scripts.mash import choose_scheme
 from bart.scripts.ascii import bart_ascii
 
 __author__ = "Tom Stanton"
@@ -26,14 +26,16 @@ def parse_args():
     parser.add_argument('input', nargs='+', type=Path, help=SUPPRESS)
     parser.print_usage = parser.print_help
     options = parser.add_argument_group('--options [defaults]')
-    options.add_argument('-s', metavar='scheme', nargs='?', type=str, const='', help='''force scheme, see bart-update -s''')
-    options.add_argument('-p', type=int, metavar='[95]', default=95, help='''template percent cutoff''')
-    options.add_argument('-o', metavar='input path', nargs='?', type=str, const='', help='''export alleles to fasta''')
-    options.add_argument('-k', action='store_true', default=False, help='''keep temporary files''')
-    options.add_argument('-l', metavar='cwd', nargs='?', type=str, const='', help='''create logfile''')
-    options.add_argument('-t', type=int, default=4, metavar='[4]', help='''threads''')
-    options.add_argument('-q', action='store_true', default=False, help='''silence messages''')
-    options.add_argument('-h', action='help', help='show this help message and exit')
+    options.add_argument('-s', metavar='scheme', nargs='?', type=str, const='', help='force scheme, see bart-update -s')
+    options.add_argument('-p', type=int, metavar='[95]', default=95, help='template percent identity cutoff')
+    options.add_argument('-o', metavar='input path', nargs='?', type=str, const='', help='export alleles to fasta')
+    options.add_argument('-k', '--keep', action='store_true', default=False, help='keep temporary files')
+    options.add_argument('-l', metavar='cwd', nargs='?', type=str, const='', help='create logfile')
+    options.add_argument('-t', type=int, default=4, metavar='[4]', help='number of threads')
+    options.add_argument('-v', '--verbose', action='store_true', default=False, help='print allele and alt-hits if different from profile')
+    options.add_argument('-vv', '--verboser', action='store_true', default=False, help='verbose with percid, coverage and depth')
+    options.add_argument('-q', '--quiet', action='store_true', default=False, help='silence messages')
+    options.add_argument('-h', '--help', action='help', help='show this help message and exit')
     args = parser.parse_args()
     return args
 
@@ -47,7 +49,7 @@ def main():
     logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
     logger.setLevel(logging.DEBUG)
     args = parse_args()
-    if args.q:
+    if args.quiet:
         logger.setLevel(logging.ERROR)
     if args.l is not None:
         logpath = args.l
@@ -105,7 +107,7 @@ def main():
                 scheme = args.s
 
 ##### Choose Scheme #####
-        else: scheme = choose_scheme(pairs, reads, db_path)
+        else: scheme = choose_scheme(sample, pairs, reads, db_path)
         if not scheme: continue
 
 ##### Run mapping and parse results #####
@@ -113,12 +115,12 @@ def main():
         # [5]Template_Coverage [6]Query_Identity [7]Query_Coverage [8]Depth [9]q_value
         ipe(pairs[reads], f'/tmp/{sample}', str(args.p), f'{db_path}/indexes/{scheme}', threads)
         res_dict, sub_hits = {}, []  # make a dictionary of kma results where allele is the key
-        #with open(f'/tmp/{sample}.res', newline='\n') as res:
-        with open('/tmp/1483797.res', newline='\n') as res:
+        with open(f'/tmp/{sample}.res', newline='\n') as res:
+        #with open('/tmp/SRR3957322.res', newline='\n') as res:
             r = res.read().splitlines()[1:] # skip header
         if len(r) == 0:  # EXIT IF NO HITS
             logger.error('no hits found')
-            #continue
+            continue
         else:
             logger.info(f'{len(r)} hits found')
             for line in r:
@@ -131,17 +133,14 @@ def main():
                     if float(result[4]) > float(res_dict[gene][4]): # pick one with higher percid
                         sub_hits.append('{}_{}'.format(gene, res_dict[gene][0]))
                         res_dict[gene] = result
-                    elif float(result[9]) > float(res_dict[gene][9]): # next, pick one with higher qscore
-                        sub_hits.append('{}_{}'.format(gene, res_dict[gene][0]))
-                        res_dict[gene] = result
                     else:
                         sub_hits.append(allele)
                 else:
                     res_dict[gene] = result
 
 ##### Assign profile via a range of methods #####
-        #with open(f'{db_path}/mapping/{scheme}.tab', newline='\n') as tab:
-        with open(f'{db_path}/mapping/Citrobacter_freundii.tab', newline='\n') as tab:
+        with open(f'{db_path}/mapping/{scheme}.tab', newline='\n') as tab:
+        #with open(f'{db_path}/mapping/Enterococcus_faecium.tab', newline='\n') as tab:
             s = tab.read().splitlines()
         headers = s[0].split('\t')[1:]
         scheme_dict = {}  # make a dictionary of the scheme where ST is the key
@@ -151,8 +150,7 @@ def main():
 
         # make a list of only genes in headers
         genes = [g for g in headers if g not in ['clonal_complex', 'species', 'CC', 'Lineage']]
-        exact = []
-        no_hit = []
+        exact, no_hit = [], []
         for i in genes:
             if i in res_dict.keys(): # check if gene in scheme was a hit in results
                 if float(res_dict[i][4]) >= 100 and float(res_dict[i][5]) >= 100: # percid and coverage
@@ -170,137 +168,106 @@ def main():
         [genes.remove(gene) for gene in no_hit if gene not in exact] # remove no-hits if scheme doesn't consider 0 as allele
         not_exact = list({*exact} ^ {*res_dict.keys()}) # make a list of non-exact genes
 
-        # Quickly filter profiles based on exact hits #
-        profile_dict = dict(scheme_dict)
-        for i in exact:
-            for st in list(profile_dict.keys()):
-                if scheme_dict[st][i] != res_dict[i][0]:
-                    profile_dict.pop(st)
+        if len(exact) > 0:
+            # Quickly filter profiles based on exact hits #
+            profile_dict = dict(scheme_dict)
+            for gene in exact:
+                for st in list(profile_dict.keys()):
+                    if scheme_dict[st][gene] != res_dict[gene][0]:
+                        profile_dict.pop(st)
+        else:
+            profile_dict = dict(scheme_dict)
+            for gene in genes:
+                allele = res_dict[gene][0]
+                for st in list(profile_dict.keys()):
+                    if scheme_dict[st][gene] != allele:
+                        profile_dict.pop(st)
 
-        # Use LCS to find closest profiles #
+            for hit in sub_hits:
+                alt_gene, alt_allele = hit.rsplit('_', 1)
+                for gene in genes:
+                    allele = res_dict[gene][0]
+                    if gene == alt_gene:
+                        allele = alt_allele
+                    for st in list(profile_dict.keys()):
+                        if scheme_dict[st][gene] != allele:
+                            profile_dict.pop(st)
+
         if len(profile_dict) != 1:
-            logger.info('no exact profile match, finding closest')
-            profile_dict = {}
+            logger.info('no exact profile match, assigning nearest')
+            # Filter nearest STs from alleles
+            sts, profile_dict = [], {}
+            for gene in res_dict.keys():
+                sts += [st for st in scheme_dict.keys() if scheme_dict[st][gene] == res_dict[gene][0]]
 
-            # LCS function
-            def profile_LCS(in_dict):
-                # 1/7 = 0.14, so at least 1 allele has to match
-                r, t = 0.14, [] # set ratio to 0.14 to filter low hits
-                profile = [in_dict[gene][0] for gene in genes]
-                for st in scheme_dict.keys():
-                    seqs = [scheme_dict[st][gene] for gene in genes], [scheme_dict[st][gene] for gene in exact]
-                    for seq in seqs: # gene and exact matching can give different results, so run both
-                        s = SequenceMatcher(None, profile, seq).ratio()
-                        if s > r:
-                            r = s # this is a problem because the first ST will always be appended
-                            t.append(st)
-                t = [i for i in t if i != 1] # remove result for ST1, assumes first ST in scheme is always 1
-                # repeat for first ST
-                seqs = [scheme_dict[1][gene] for gene in genes], [scheme_dict[1][gene] for gene in exact]
-                for seq in seqs:
-                    s = SequenceMatcher(None, seq, profile).ratio()
-                    if s > r:
-                        r = s
-                        t.append(1)
-                return r, t # returns highest matching ratio and best STs
+            for hit in sub_hits:
+                gene, allele = hit.rsplit('_', 1)
+                sts += [st for st in scheme_dict.keys() if scheme_dict[st][gene] == allele]
 
-            ratio, topst = profile_LCS(res_dict)
-
-            if len(sub_hits) > 0: # see sub-hits match profiles better
-                for allele in sub_hits:
-                    result = ''.join(x.replace(' ','') for x in r if allele in x).split('\t')
-                    allele = result[0]
-                    gene = result[0].rsplit('_', 1)[0]  # make gene name the key
-                    result[0] = result[0].rsplit('_', 1)[1]
-                    tmp_dict = dict(res_dict)
-                    tmp_dict[gene] = result
-                    r_sub, t_sub = profile_LCS(tmp_dict)
-                    if r_sub > ratio:
-                        logger.info(f'sub-hit {allele} matches '
-                                    f'{len(t_sub)} profiles at {int(r_sub * 100)}% '
-                                    f'compared to {int(ratio * 100)}% for {gene}_{res_dict[gene][0]}')
-                        ratio = r_sub # update top ratio for better sub-hits
-                        res_dict[gene] = result # update results with sub-hit
-                        topst += t_sub
-
-            if len(topst) > len(set(topst)): # choose most likely STs from gene and exact matching, will appear twice
-                for st in set(topst): # make top sts unique and iterate
-                    if topst.count(st) == 2: # max value is 2
-                        profile_dict[st] = scheme_dict[st]
-            else:
-                for st in topst:
-                    profile_dict[st] = scheme_dict[st]
-
-            if len(profile_dict) != 0:
-                logger.info(f'displaying {len(profile_dict)} profile(s) with {int(ratio * 100)}% match')
-            else:
-                logger.warning(f'no profile matches')
+            for st in [k for k, v in Counter(sts).items() if v == max(Counter(sts).values())]:
+                profile_dict[st] = scheme_dict[st]
 
 ##### Printing output #####
 
-############################################################################
-        # add info in output header for non-exact matches
-        # out is always the numbers from profile_dict but with info from res_dict
-
-        out = sample + '\t' + scheme + '\t' # this part of the output never changes
-
         if len(profile_dict) == 0: # just print results if no profile match
-            st = '?'
-            result = ''
+            out = f'{sample}\t{scheme}\t?'
             for gene in res_dict.keys():
-                result += f'{res_dict[gene]}({res_dict[gene][0]})'
+                out += '\t' + f'{res_dict[gene]}({res_dict[gene][0]})'
 
         else:
             for k in profile_dict.keys():
                 st = str(k)
-                result = ''
-                if ratio:
-                    st += f' ({int(ratio * 100)}%)'
-
-                #genA(15),14
-
+                out = f'{sample}\t{scheme}\t{st}'
                 for gene, allele in profile_dict[k].items(): # iterate through dictionary for each st
-                    if gene in res_dict.keys():
-                        if float(res_dict[gene][4]) < 100 and float(res_dict[gene][5]) < 100:
-                            result += '\t' + f'{gene}({allele}?)'
+                    if gene in ['clonal_complex', 'species', 'CC', 'Lineage']:
+                        if allele != '':
+                            out += f'\t{gene}({allele})'
+                    elif gene in no_hit:
+                        out += f'\t{gene}({allele}-)'
 
-                        elif float(res_dict[gene][4]) < 100:
-                            result += '\t' + f'{gene}({allele})'
+                    elif gene in genes:
+                        res_allele, percid, cov, depth = \
+                            res_dict[gene][0], res_dict[gene][4], res_dict[gene][5], res_dict[gene][8]
+                        if float(percid) != 100 or float(cov) != 100:
+                            allele += '?'  # non-perfect hit
+                        elif float(percid) != 100:
+                            allele += '~'  # potential novel
 
-                        elif float(res_dict[gene][5]) < 100:
-                            result += '\t' + f'{gene}({allele})'
+                        if args.verbose or args.verboser:
 
-                        # if res_dict[gene][0] != allele:
-                        
+                            if res_allele == allele.strip('?').strip('~').strip('-'):
+                                if args.verboser:
+                                    out += f'\t{gene}({allele}: {percid} {cov} {depth})'
+                                else: out += f'\t{gene}({allele})'
 
-                    elif gene in ['clonal_complex', 'species', 'CC', 'Lineage']:
-                        if allele:
-                            result += '\t' + f'{gene}({allele})'
+                            else:
+                                if args.verboser:
+                                    out += f'\t{gene}({allele})[{res_allele}: {percid} {cov} {depth}]'
+                                else: out += f'\t{gene}({allele})[{res_allele}]'
 
+                            out += ','.join(i.rsplit('_', 1)[1] for i in sub_hits if gene in i)
 
-        # up here we can create the standardised output
-        # v: plus extra verbosity
-        # vv: plus extra verbosity plus extra stats
+                        else: out += f'\t{gene}({allele})'
 
-
-        print('Sample\tScheme\tST\t' + "\t".join([str(x) for x in headers]))
-        if len(profile_dict) == 0:
-            out = sample + '\t' + scheme + '\t' + '?'
-            for gene in res_dict.keys():
-                out += '\t' + res_dict[gene][0]
-            print(out)
-        else: # just print results if no profile match
-            for st in profile_dict.keys():
-                out = sample + '\t' + scheme + '\t' + str(st)
-                for k, v in profile_dict[st].items():
-                    if k in [s.strip('~').strip('!').strip('*') for s in headers]:
-                        if v != '':
-                            out += '\t' + v
-                    else:
-                        out += '\t-'
                 print(out)
 
-############################################################################
+        ## Legacy printing ##
+        # print('Sample\tScheme\tST\t' + "\t".join([str(x) for x in headers]))
+        # if len(profile_dict) == 0:
+        #     out = sample + '\t' + scheme + '\t' + '?'
+        #     for gene in res_dict.keys():
+        #         out += '\t' + res_dict[gene][0]
+        #     print(out)
+        # else: # just print results if no profile match
+        #     for st in profile_dict.keys():
+        #         out = sample + '\t' + scheme + '\t' + str(st)
+        #         for k, v in profile_dict[st].items():
+        #             if k in [s.strip('~').strip('!').strip('*') for s in headers]:
+        #                 if v != '':
+        #                     out += '\t' + v
+        #             else:
+        #                 out += '\t-'
+        #         print(out)
 
         if args.o is not None:
             outfile = args.o
@@ -320,7 +287,7 @@ def main():
             logger.info(f'written alleles to {outfile}')
 
 ##### Cleanup #####
-        if not args.k:
+        if not args.keep:
             logger.info(f'cleaning up files in /tmp/')
             for f in os.listdir('/tmp/'):
                 if sample in f:

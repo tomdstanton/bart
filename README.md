@@ -40,21 +40,23 @@ python setup.py develop
 ```
 ### Usage
 ```
-$ bart paired-end-reads.fq(.gz) [options] > mlst.tab
+bart paired-end-reads.fq(.gz) [options] > mlst.tab
 
 --options [defaults]:
   -s [scheme]      force scheme, see bart-update -s
-  -p [95]          template percent cutoff
+  -p [95]          template percent identity cutoff
   -o [input path]  export alleles to fasta
-  -k               keep temporary files
+  -k, --keep       keep temporary files
   -l [cwd]         create logfile
-  -t [4]           threads
-  -q               silence messages
-  -h               show this help message and exit
+  -t [4]           number of threads
+  -v, --verbose    print allele and alt-hits if different from profile
+  -vv, --verboser  verbose with percid, coverage and depth
+  -q, --quiet      silence messages
+  -h, --help       show this help message and exit
 ```
 I like to test bart on SRA reads like so:
 ```
-$ fastq-dump SRR14224855 --split-files --gzip && bart SRR14224855*
+fastq-dump SRR14224855 --split-files --gzip && bart SRR14224855*
 ```
 * This completed in 9.6 seconds on a 4-core laptop.
 
@@ -76,16 +78,33 @@ Staphylococcus_pseudintermedius
 ```
 Now you can run:
 ```
-$ bart SRR14224855* -s Staphylococcus_aureus
+bart SRR14224855* -s Staphylococcus_aureus
 ```
-| Sample      | Scheme                | ST   | arcC | aroE | glpF | gmk | pta | tpi | yqiL | clonal_complex | 
-|-------------|-----------------------|------|------|------|------|-----|-----|-----|------|----------------| 
-| SRR14224855 | Staphylococcus_aureus | 9    | 3    | 3    | 1    | 1   | 1   | 1   | 10   | CC1            | 
+Output is now a single tab-separated line .
+Alleles are presented like so:
+* gene(allele), where the allele is from the matching, or nearest matching profile.
+* '?'  indicates a non-perfect hit
+* '~' indicates a potential novel hit
+* '-' indicates no hit.
 
-* (*) indicates alleles have less than 100% identity
-* (~) indicates alleles have less than 100% coverage
-* (!) indicates alleles have less than 100% coverage and identity
-* (#) indicates no hit for alleles
+| SRR14224855 | Staphylococcus_aureus | 9 | arcC(3)                             | aroE(3)                             | glpF(1)                      | gmk(1)                        | pta(1)                         | tpi(1)                         | yqiL(10)                         | clonal_complex(CC1) |
+|-------------|-----------------------|---|-------------------------------------|-------------------------------------|------------------------------|-------------------------------|--------------------------------|--------------------------------|----------------------------------|---------------------|
+
+Verbose `-v` prints the top hit allele in square brackets next to the allele number
+if different from the profile allele.
+Alternative allele hits that were also found will also be printed.
+This means you can make an informed decision about the ST if there are several near-profile assignments.
+
+| SRR14224855 | Staphylococcus_aureus | 9 | arcC(3)346,616                      | aroE(3)260,415                      | glpF(1)                      | gmk(1)85                      | pta(1)777                      | tpi(1)269                      | yqiL(10)816                      | clonal_complex(CC1) |
+|-------------|-----------------------|---|-------------------------------------|-------------------------------------|------------------------------|-------------------------------|--------------------------------|--------------------------------|----------------------------------|---------------------|
+
+"Verboser" `-vv` does the same, but prints mapping data of the top hit in the following format:
+gene(allele: %identity, %coverage, depth) alternative alleles
+or if the top allele hit isn't the same as the assigned profiles:
+gene(allele)[top hit allele: %identity, %coverage, depth] alternative alleles
+
+| SRR14224855 | Staphylococcus_aureus | 9 | arcC(3: 100.00 100.00 40.52)346,616 | aroE(3: 100.00 100.00 27.58)260,415 | glpF(1: 100.00 100.00 27.84) | gmk(1: 100.00 100.00 24.42)85 | pta(1: 100.00 100.00 36.66)777 | tpi(1: 100.00 100.00 52.26)269 | yqiL(10: 100.00 100.00 44.92)816 | clonal_complex(CC1) |
+|-------------|-----------------------|---|-------------------------------------|-------------------------------------|------------------------------|-------------------------------|--------------------------------|--------------------------------|----------------------------------|---------------------|
 
 ### bart-update
 The ```bart-update``` script handles the scheme manipulation and has several options:
@@ -102,13 +121,13 @@ and
 [mapping](https://rest.pubmlst.org/db/pubmlst_mflocculare_seqdef/schemes/1/profiles_csv)
 file.
 ```
-$ bart-update -a scheme.fna scheme.tab
+bart-update -a scheme.fna scheme.tab
 ```
 Sometimes there are 2 schemes for a species which is problematic because
 the heuristics will pick the same one every time. For _A. baumannii_,
 I don't want the Oxford  scheme to be considered, so I simply run:
 ```
-$ bart-update -r Acinetobacter_baumannii#1
+bart-update -r Acinetobacter_baumannii#1
 ```
 
 **Bugs / issues / development:**
