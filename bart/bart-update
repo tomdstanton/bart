@@ -8,6 +8,7 @@ from requests import get
 from pathlib import Path
 from shutil import copyfile
 from sys import version_info, platform, argv
+import bart
 from bart.scripts.version import __version__
 from bart.scripts.kma import index
 
@@ -34,11 +35,10 @@ def parse_args():
 
 
 def main():
-    bin_path = Path(__file__).parent.absolute()
-    db_path = f'{bin_path}/db'
+    db_path = f'{os.path.dirname(bart.__file__)}/db'
     os.makedirs(db_path, exist_ok=True)
-    os.makedirs(f'{bin_path}/db/indexes', exist_ok=True)
-    os.makedirs(f'{bin_path}/db/mapping', exist_ok=True)
+    os.makedirs(f'{db_path}/indexes', exist_ok=True)
+    os.makedirs(f'{db_path}/mapping', exist_ok=True)
     logger = logging.getLogger('root')
     logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
     logger.setLevel(logging.DEBUG)

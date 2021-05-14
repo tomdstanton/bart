@@ -26,17 +26,14 @@ Thomas David Stanton, 2021
 https://github.com/tomdstanton/bart
 ```
 ### Dependencies
-* Linux (might work on Mac, not tested)
 * python >=3.7
 * [kma](https://anaconda.org/bioconda/kma) (use conda)
 * [refseq_masher](https://anaconda.org/bioconda/refseq_masher) (use conda)
 
 ## Installation
-Clone repo and install with python:
+
 ```
-git clone --recursive https://github.com/tomdstanton/bart
-cd bart
-python setup.py develop
+git clone --recursive https://github.com/tomdstanton/bart && cd bart && python setup.py install
 ```
 ### Usage
 ```

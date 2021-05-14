@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 from distutils.util import convert_path
 
 main_ns = {}
@@ -21,7 +21,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: Linux",
     ],
-    packages=['bart'],
+    packages=find_packages(),
     python_requires=">=3.7",
     scripts=['bart/bart', 'bart/bart-update'],
     keywords='microbial genomics amr virulence',
