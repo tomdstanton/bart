@@ -107,12 +107,17 @@ gene(allele)[top hit allele: %identity, %coverage, depth] alternative alleles
 |-------------|-----------------------|---|-------------------------------------|-------------------------------------|------------------------------|-------------------------------|--------------------------------|--------------------------------|----------------------------------|---------------------|
 
 ### bart-update
-The ```bart-update``` script handles the scheme manipulation and has several options:
-* ```-s``` prints all available MLST schemes in database
-* ```-p``` updates and indexes all schemes from pubmlst (this sounds slow but takes <1 min)
-* ```-a``` adds a custom scheme from a fasta and tab mapping file
-* ```-r``` removes the listed schemes in the database
+```
+usage: bart-update [options]
 
+--options [defaults]:
+  -s            print available MLST schemes
+  -S            -s with genes
+  -p            update pubMLST schemes
+  -a [ [ ...]]  path to custom scheme fasta and csv
+  -r [ [ ...]]  name of scheme(s) to remove
+  -h            show this help message and exit
+```
 You can even add your own schemes to the database! You just need to
 provide an allele fasta and corresponding TAB-seprarated profile mapping
 file in the PubMLST format. Check out an example 
