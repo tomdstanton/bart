@@ -55,9 +55,9 @@ I like to test bart on SRA reads like so:
 ```
 fastq-dump SRR14224855 --split-files --gzip && bart SRR14224855*
 ```
-* This completed in 9.6 seconds on a 4-core laptop.
+* MLST of these reads completed in 9.6 seconds on a 4-core laptop.
 
-If you already know the species of your reads
+If you already know the species of your reads,
 or the specific scheme you would like to use, you can bypass
 scheme choosing heuristics. 
 
@@ -77,7 +77,7 @@ Now you can run:
 ```
 bart SRR14224855* -s Staphylococcus_aureus
 ```
-Output is now a single tab-separated line .
+Output is now a single tab-separated line.
 Alleles are presented like so:
 * gene(allele), where the allele is from the matching, or nearest matching profile.
 * '?'  indicates a non-perfect hit
@@ -89,16 +89,18 @@ Alleles are presented like so:
 
 Verbose `-v` prints the top hit allele in square brackets next to the allele number
 if different from the profile allele.
-Alternative allele hits that were also found will also be printed.
+Alternative allele hits that were found will also be printed.
 This means you can make an informed decision about the ST if there are several near-profile assignments.
 
 | SRR14224855 | Staphylococcus_aureus | 9 | arcC(3)346,616                      | aroE(3)260,415                      | glpF(1)                      | gmk(1)85                      | pta(1)777                      | tpi(1)269                      | yqiL(10)816                      | clonal_complex(CC1) |
 |-------------|-----------------------|---|-------------------------------------|-------------------------------------|------------------------------|-------------------------------|--------------------------------|--------------------------------|----------------------------------|---------------------|
 
-"Verboser" `-vv` does the same, but prints mapping data of the top hit in the following format:
-gene(allele: %identity, %coverage, depth) alternative alleles
+"Verboser" `-vv` does the same, but prints mapping data 
+of the top hit in the following format:
+`gene(allele: %identity, %coverage, depth) alternative alleles`
+
 or if the top allele hit isn't the same as the assigned profiles:
-gene(allele)[top hit allele: %identity, %coverage, depth] alternative alleles
+`gene(allele)[top hit allele: %identity, %coverage, depth] alternative alleles`
 
 | SRR14224855 | Staphylococcus_aureus | 9 | arcC(3: 100.00 100.00 40.52)346,616 | aroE(3: 100.00 100.00 27.58)260,415 | glpF(1: 100.00 100.00 27.84) | gmk(1: 100.00 100.00 24.42)85 | pta(1: 100.00 100.00 36.66)777 | tpi(1: 100.00 100.00 52.26)269 | yqiL(10: 100.00 100.00 44.92)816 | clonal_complex(CC1) |
 |-------------|-----------------------|---|-------------------------------------|-------------------------------------|------------------------------|-------------------------------|--------------------------------|--------------------------------|----------------------------------|---------------------|
