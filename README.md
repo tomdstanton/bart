@@ -133,6 +133,25 @@ I don't want the Oxford  scheme to be considered, so I simply run:
 ```
 bart-update -r Acinetobacter_baumannii#1
 ```
+### bart-profile
+`bart-profile` is an interactive script which returns the ST
+or closest ST(s) for a combination of alleles in a scheme.
+```
+usage: bart-profile [scheme]
+
+$ bart-profile Helicobacter_cinaedi
+10:52:51 | this is bart 0.1.0. by Tom Stanton
+10:52:51 | running on linux with Python 3.7.10
+enter allele for 23S_rRNA: 4
+enter allele for ppa: 2
+enter allele for aspA: 2
+enter allele for aroE: 2
+enter allele for atpA: 2
+enter allele for tkt: 1
+enter allele for cdtB: 2
+scheme: Helicobacter_cinaedi	ST: 10	23S_rRNA(4)	ppa(2)	aspA(2)	aroE(2)	atpA(2)	tkt(1)	cdtB(2)	clonal_complex(9)
+```
+That's it!
 
 **Bugs / issues / development:**
 * Currently only works on paired-end reads. Support for

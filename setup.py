@@ -23,7 +23,7 @@ setup(
     ],
     packages=find_packages(),
     python_requires=">=3.7",
-    scripts=['bart/bart', 'bart/bart-update'],
+    scripts=['bart/bart', 'bart/bart-update', 'bart/bart-profile'],
     keywords='microbial genomics amr virulence',
     install_requires='requests',
     zip_safe=False,
