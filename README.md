@@ -140,8 +140,6 @@ or closest ST(s) for a combination of alleles in a scheme.
 usage: bart-profile [scheme]
 
 $ bart-profile Helicobacter_cinaedi
-10:52:51 | this is bart 0.1.0. by Tom Stanton
-10:52:51 | running on linux with Python 3.7.10
 enter allele for 23S_rRNA: 4
 enter allele for ppa: 2
 enter allele for aspA: 2
