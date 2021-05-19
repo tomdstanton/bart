@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from argparse import ArgumentParser, SUPPRESS
+import os, logging
+from sys import version_info, platform
+from collections import Counter
+import bart
+from bart.scripts.version import __version__
+
+__author__ = "Tom Stanton"
+__license__ = "MIT"
+__maintainer__ = "Tom Stanton"
+__email__ = "tomdstanton@gmail.com"
+__status__ = "Development"
+
+def parse_args():
+    parser = ArgumentParser(add_help=False, usage="bart-profile [scheme]")
+    parser.add_argument('scheme', type=str, help=SUPPRESS)
+    args = parser.parse_args()
+    return args
+
+
+def main():
+    db_path = f'{os.path.dirname(bart.__file__)}/db'
+    os.makedirs(db_path, exist_ok=True)
+    os.makedirs(f'{db_path}/mapping', exist_ok=True)
+    logger = logging.getLogger('root')
+    logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
+    logger.setLevel(logging.DEBUG)
+    args = parse_args()
+    logger.info(f'this is bart {__version__} by {__author__}')
+    logger.info(f'running on {platform} with Python {str(version_info[:3])[1:-1].replace(", ", ".")}')
+
+
+##### Create dict for genes and alleles from user input ########
+
+    if not args.scheme in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
+        exit(logger.error(f'{args.scheme} not a valid scheme, use bart-update -s to see valid schemes'))
+    else:
+        scheme = args.scheme
+
+    with open(f'{db_path}/mapping/{scheme}.tab', newline='\n') as tab:
+        s = tab.read().splitlines()
+    headers = s[0].split('\t')[1:]
+    scheme_dict = {}  # make a dictionary of the scheme where ST is the key
+    for line in s[1:]:  # first column is ST
+        v = line.split('\t')
+        scheme_dict[int(v[0])] = {headers[i]: v[1:][i] for i in range(len(headers))}
+
+    # make a list of only genes in headers
+    genes = [g for g in headers if g not in ['clonal_complex', 'species', 'CC', 'Lineage']]
+    allele_dict = {gene:input(f'enter allele for {gene}: ') for gene in genes}
+
+##### Assign profile via a range of methods #####
+    profile_dict = dict(scheme_dict)
+    for gene in genes:
+        allele = allele_dict[gene]
+        for st in list(profile_dict.keys()):
+            if scheme_dict[st][gene] != allele:
+                profile_dict.pop(st)
+
+    if len(profile_dict) != 1:
+        logger.info('no exact profile match, assigning nearest')
+        # Filter nearest STs from alleles
+        sts, profile_dict = [], {}
+        for gene in allele_dict.keys():
+            sts += [st for st in scheme_dict.keys() if scheme_dict[st][gene] == allele_dict[gene]]
+
+        for st in [k for k, v in Counter(sts).items() if v == max(Counter(sts).values())]:
+            profile_dict[st] = scheme_dict[st]
+
+##### Printing output #####
+    if len(profile_dict) == 0:
+        exit(logger.error('no profile match'))
+
+    else:
+        for k in profile_dict.keys():
+            st = str(k)
+            out = f'scheme: {scheme}\tST: {st}'
+            for gene, allele in profile_dict[k].items():
+                out += f'\t{gene}({allele})'
+            print(out)
+
+
+if __name__ == '__main__':
+    main()
