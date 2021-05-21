@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from re import search, compile
+from re import search, compile, IGNORECASE
 from collections import defaultdict
 from argparse import ArgumentParser, SUPPRESS
 import os, logging
@@ -11,7 +11,7 @@ from time import time
 from sys import version_info, platform
 import bart
 from bart.scripts.version import __version__
-from bart.scripts.kma import ipe
+from bart.scripts.kma import kma
 from bart.scripts.mash import choose_scheme
 from bart.scripts.ascii import bart_ascii
 
@@ -26,10 +26,12 @@ def parse_args():
     parser.add_argument('input', nargs='+', type=Path, help=SUPPRESS)
     parser.print_usage = parser.print_help
     options = parser.add_argument_group('--options [defaults]')
+    options.add_argument('-r', type=str, choices=['pe','se','ont','int'], help='read-type (paired/single/nanopore/interleaved)')
     options.add_argument('-s', metavar='scheme', nargs='?', type=str, const='', help='force scheme, see bart-update -s')
     options.add_argument('-p', type=int, metavar='[95]', default=95, help='template percent identity cutoff')
     options.add_argument('-o', metavar='input path', nargs='?', type=str, const='', help='export alleles to fasta')
     options.add_argument('-k', '--keep', action='store_true', default=False, help='keep temporary files')
+    options.add_argument('-a', '--alt', action='store_true', default=False, help='consider alternative hits when assigning ST')
     options.add_argument('-l', metavar='cwd', nargs='?', type=str, const='', help='create logfile')
     options.add_argument('-t', type=int, default=4, metavar='[4]', help='number of threads')
     options.add_argument('-v', '--verbose', action='store_true', default=False, help='print allele and alt-hits if different from profile')
@@ -66,15 +68,13 @@ def main():
         threads = str(os.cpu_count())
     logger.info(f'using {threads} threads')
 
-    suffixes = ['_R[12]\.(fastq(?:\.gz)?)$', '_R[12]_[0-9]+?\.(fastq(?:\.gz)?)$',
-                '_R[12].[0-9]+?\.(fastq(?:\.gz)?)$', '_[12]\.(fastq(?:\.gz)?)$',
-                '_[12]_[0-9]+?\.(fastq(?:\.gz)?)$', '_[12].[0-9]+?\.(fastq(?:\.gz)?)$',
-                '_R[12]\.(fq(?:\.gz)?)$', '_R[12]_[0-9]+?\.(fq(?:\.gz)?)$',
-                '_R[12].[0-9]+?\.(fq(?:\.gz)?)$', '_[12]\.(fq(?:\.gz)?)$',
-                '_[12]_[0-9]+?\.(fq(?:\.gz)?)$', '_[12].[0-9]+?\.(fq(?:\.gz)?)$']
+    suffixes = ['_R[12]\.(f(?:ast)?q(?:\.gz)?)$', '_R[12]_[0-9]+?\.(f(?:ast)?q(?:\.gz)?)$',
+                '_R[12].[0-9]+?\.(f(?:ast)?q(?:\.gz)?)$', '_[12]\.(f(?:ast)?q(?:\.gz)?)$',
+                '_[12]_[0-9]+?\.(f(?:ast)?q(?:\.gz)?)$', '_[12].[0-9]+?\.(f(?:ast)?q(?:\.gz)?)$',
+                '\.(f(?:ast)?q(?:\.gz)?)$'] #last one is for non-paired reads
 
-    r = compile('|'.join(suffixes))
-    pairs = defaultdict(list)
+    r = compile('|'.join(suffixes), IGNORECASE)
+    reads = defaultdict(list)
     for i in args.input:
         if not os.path.isfile(i):
             logger.error(f'{i} is not a valid file')
@@ -82,7 +82,7 @@ def main():
             filename = str(i)
             s = search(r, filename)
             if s:
-                pairs[filename.replace(s.group(0), '')].append(str(i))
+                reads[filename.replace(s.group(0), '')].append(str(i))
             else:
                 logger.error(f'{i} is not a fastq file')
 
@@ -93,12 +93,32 @@ def main():
     start = time()
 
 ##### Loop over read-pair dict #####
-    for reads in list(pairs):
-        sample = os.path.basename(reads)
-        if len(pairs[reads]) != 2:
-            logger.error(f'no read pair found for {sample}: {" ".join(pairs[reads])}')
+    for filenames in list(reads):
+        sample = os.path.basename(filenames)
+        if len(reads[filenames]) > 2:
+            logger.error(f'more than 2 files for {sample}: {" ".join(reads[filenames])}')
             continue
-        logger.info(f'read pair for {sample}: {" ".join(pairs[reads])}')
+
+        if not args.r: readtype = ''
+        else: readtype = args.r
+
+        if len(reads[filenames]) == 2:
+            if 'se' in readtype or 'ont' in readtype or 'int' in readtype:
+                logger.error(f'cannot use {readtype}, 2 files found for {sample}: {" ".join(reads[filenames])}')
+                continue
+            else:
+                readtype = 'pe'
+
+        if len(reads[filenames]) == 1:
+            if 'pe' in readtype:
+                logger.error(f'cannot use {readtype}, 2 files found for {sample}: {" ".join(reads[filenames])}')
+                continue
+            elif not args.r: readtype = 'se'
+
+        rtypes = {'pe': 'paired-end', 'se': 'single-end', 'int': 'interleaved', 'ont': 'nanopore'}
+
+        logger.info(f'reads for {sample}: {" ".join(reads[filenames])}')
+        logger.info(f'assuming reads are {rtypes[readtype]}')
 
         if args.s is not None:
             if not args.s in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
@@ -107,32 +127,38 @@ def main():
                 scheme = args.s
 
 ##### Choose Scheme #####
-        else: scheme = choose_scheme(sample, pairs, reads, db_path)
+        else: scheme = choose_scheme(sample, reads, filenames, db_path)
         if not scheme: continue
 
 ##### Run mapping and parse results #####
         # [0]Template [1]Score [2]Expected [3]Template_length [4]Template_Identity
         # [5]Template_Coverage [6]Query_Identity [7]Query_Coverage [8]Depth [9]q_value
-        ipe(pairs[reads], f'/tmp/{sample}', str(args.p), f'{db_path}/indexes/{scheme}', threads)
-        res_dict, sub_hits = {}, []  # make a dictionary of kma results where allele is the key
+        kma(reads[filenames], f'/tmp/{sample}', str(args.p), f'{db_path}/indexes/{scheme}', threads, readtype)
+
         with open(f'/tmp/{sample}.res', newline='\n') as res:
-        #with open('/tmp/SRR3957322.res', newline='\n') as res:
+        #with open('/home/tom/PycharmProjects/bart/tests/ERR5693750.res', newline='\n') as res:
             r = res.read().splitlines()[1:] # skip header
         if len(r) == 0:  # EXIT IF NO HITS
             logger.error('no hits found')
             continue
         else:
             logger.info(f'{len(r)} hits found')
+            res_dict, sub_hits = {}, []  # make a dictionary of kma results where allele is the key
             for line in r:
-                result = [x.strip(' ') for x in line.split('\t')][:-1] # p_value unnecessary, always the same
-                allele = result[0]
-                gene = result[0].rsplit('_', 1)[0] # make gene name the key
-                result[0] = result[0].rsplit('_', 1)[1] # make allele number first element
-
-                if gene in res_dict.keys(): # if the gene is already in results dict
-                    if float(result[4]) > float(res_dict[gene][4]): # pick one with higher percid
+                result = [x.strip(' ') for x in line.split('\t')][:-1]  # p_value unnecessary, always the same
+                allele, gene = result[0], result[0].rsplit('_', 1)[0]  # make gene name the key
+                result[0] = result[0].rsplit('_', 1)[1]  # make allele number first element
+                if gene in res_dict.keys():  # if the gene is already in results dict
+                    if float(result[4]) > float(res_dict[gene][4]) and float(result[4]) <=100:
                         sub_hits.append('{}_{}'.format(gene, res_dict[gene][0]))
                         res_dict[gene] = result
+
+                    elif float(result[4]) == float(res_dict[gene][4]) and float(result[4]) <=100:
+                        if float(result[9]) > float(res_dict[gene][9]):
+                            sub_hits.append('{}_{}'.format(gene, res_dict[gene][0]))
+                            res_dict[gene] = result
+                        else:
+                            sub_hits.append(allele)
                     else:
                         sub_hits.append(allele)
                 else:
@@ -140,7 +166,7 @@ def main():
 
 ##### Assign profile via a range of methods #####
         with open(f'{db_path}/mapping/{scheme}.tab', newline='\n') as tab:
-        #with open(f'{db_path}/mapping/Enterococcus_faecium.tab', newline='\n') as tab:
+        #with open(f'{db_path}/mapping/Klebsiella_pneumoniae.tab', newline='\n') as tab:
             s = tab.read().splitlines()
         headers = s[0].split('\t')[1:]
         scheme_dict = {}  # make a dictionary of the scheme where ST is the key
@@ -152,7 +178,7 @@ def main():
         genes = [g for g in headers if g not in ['clonal_complex', 'species', 'CC', 'Lineage']]
         exact, no_hit = [], []
         for i in genes:
-            if i in res_dict.keys(): # check if gene in scheme was a hit in results
+            if i in list(res_dict): # check if gene in scheme was a hit in results
                 if float(res_dict[i][4]) >= 100 and float(res_dict[i][5]) >= 100: # percid and coverage
                     exact.append(i) # make a list of genes with exact matches
             else:
@@ -182,16 +208,16 @@ def main():
                 for st in list(profile_dict.keys()):
                     if scheme_dict[st][gene] != allele:
                         profile_dict.pop(st)
-
-            for hit in sub_hits:
-                alt_gene, alt_allele = hit.rsplit('_', 1)
-                for gene in genes:
-                    allele = res_dict[gene][0]
-                    if gene == alt_gene:
-                        allele = alt_allele
-                    for st in list(profile_dict.keys()):
-                        if scheme_dict[st][gene] != allele:
-                            profile_dict.pop(st)
+            if args.alt:
+                for hit in sub_hits:
+                    alt_gene, alt_allele = hit.rsplit('_', 1)
+                    for gene in genes:
+                        allele = res_dict[gene][0]
+                        if gene == alt_gene:
+                            allele = alt_allele
+                        for st in list(profile_dict.keys()):
+                            if scheme_dict[st][gene] != allele:
+                                profile_dict.pop(st)
 
         if len(profile_dict) != 1:
             logger.info('no exact profile match, assigning nearest')
@@ -200,9 +226,10 @@ def main():
             for gene in res_dict.keys():
                 sts += [st for st in scheme_dict.keys() if scheme_dict[st][gene] == res_dict[gene][0]]
 
-            for hit in sub_hits:
-                gene, allele = hit.rsplit('_', 1)
-                sts += [st for st in scheme_dict.keys() if scheme_dict[st][gene] == allele]
+            if args.alt:
+                for hit in sub_hits:
+                    gene, allele = hit.rsplit('_', 1)
+                    sts += [st for st in scheme_dict.keys() if scheme_dict[st][gene] == allele]
 
             for st in [k for k, v in Counter(sts).items() if v == max(Counter(sts).values())]:
                 profile_dict[st] = scheme_dict[st]
@@ -273,9 +300,9 @@ def main():
             outfile = args.o
             if outfile == '':
                 delim = '.'
-                if '_' in pairs[reads][0]:
+                if '_' in reads[filenames][0]:
                     delim = '_'
-                outfile = f'{pairs[reads][0].split(delim, 1)[0]}_alleles.fna'
+                outfile = f'{reads[filenames][0].split(delim, 1)[0]}_alleles.fna'
             with open(f'/tmp/{sample}.fsa', newline='\n') as fna, open(outfile, 'wt') as out:
                 for seq in fna.read().split('>')[1:]:
                     for k, v in res_dict.items():

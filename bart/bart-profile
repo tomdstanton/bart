@@ -15,8 +15,9 @@ __email__ = "tomdstanton@gmail.com"
 __status__ = "Development"
 
 def parse_args():
-    parser = ArgumentParser(add_help=False, usage="bart-profile [scheme]")
+    parser = ArgumentParser(add_help=False, usage="bart-profile [scheme] [ST]")
     parser.add_argument('scheme', type=str, help=SUPPRESS)
+    parser.add_argument('ST', type=str, nargs='*', help=SUPPRESS)
     args = parser.parse_args()
     return args
 
@@ -50,37 +51,50 @@ def main():
 
     # make a list of only genes in headers
     genes = [g for g in headers if g not in ['clonal_complex', 'species', 'CC', 'Lineage']]
-    allele_dict = {gene:input(f'enter allele for {gene}: ') for gene in genes}
 
-##### Assign profile via a range of methods #####
-    profile_dict = dict(scheme_dict)
-    for gene in genes:
-        allele = allele_dict[gene]
-        for st in list(profile_dict.keys()):
-            if scheme_dict[st][gene] != allele:
-                profile_dict.pop(st)
+##### Print ST profile #####
 
-    if len(profile_dict) != 1:
-        logger.info('no exact profile match, assigning nearest')
-        # Filter nearest STs from alleles
-        sts, profile_dict = [], {}
-        for gene in allele_dict.keys():
-            sts += [st for st in scheme_dict.keys() if scheme_dict[st][gene] == allele_dict[gene]]
-
-        for st in [k for k, v in Counter(sts).items() if v == max(Counter(sts).values())]:
-            profile_dict[st] = scheme_dict[st]
-
-##### Printing output #####
-    if len(profile_dict) == 0:
-        exit(logger.error('no profile match'))
-
-    else:
-        for k in profile_dict.keys():
-            st = str(k)
+    if len(args.ST) > 0:
+        for st in args.ST:
+            st = int(st)
             out = f'scheme: {scheme}\tST: {st}'
-            for gene, allele in profile_dict[k].items():
+            for gene, allele in scheme_dict[st].items():
                 out += f'\t{gene}({allele})'
             print(out)
+    else:
+
+##### Start user input of alleles #####
+        allele_dict = {gene:input(f'input >> | enter allele for {gene}: ') for gene in genes}
+
+##### Assign profile via a range of methods #####
+        profile_dict = dict(scheme_dict)
+        for gene in genes:
+            allele = allele_dict[gene]
+            for st in list(profile_dict.keys()):
+                if scheme_dict[st][gene] != allele:
+                    profile_dict.pop(st)
+
+        if len(profile_dict) != 1:
+            logger.info('no exact profile match, assigning nearest')
+            # Filter nearest STs from alleles
+            sts, profile_dict = [], {}
+            for gene in allele_dict.keys():
+                sts += [st for st in scheme_dict.keys() if scheme_dict[st][gene] == allele_dict[gene]]
+
+            for st in [k for k, v in Counter(sts).items() if v == max(Counter(sts).values())]:
+                profile_dict[st] = scheme_dict[st]
+
+##### Printing output #####
+        if len(profile_dict) == 0:
+            exit(logger.error('no profile match'))
+
+        else:
+            for k in profile_dict.keys():
+                st = str(k)
+                out = f'scheme: {scheme}\tST: {st}'
+                for gene, allele in profile_dict[k].items():
+                    out += f'\t{gene}({allele})'
+                print(out)
 
 
 if __name__ == '__main__':

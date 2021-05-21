@@ -37,19 +37,21 @@ git clone --recursive https://github.com/tomdstanton/bart && cd bart && python s
 ```
 ### Usage
 ```
-bart paired-end-reads.fq(.gz) [options] > mlst.tab
+usage: bart input.fq.gz [options] > outfile.tab
 
 --options [defaults]:
-  -s [scheme]      force scheme, see bart-update -s
-  -p [95]          template percent identity cutoff
-  -o [input path]  export alleles to fasta
-  -k, --keep       keep temporary files
-  -l [cwd]         create logfile
-  -t [4]           number of threads
-  -v, --verbose    print allele and alt-hits if different from profile
-  -vv, --verboser  verbose with percid, coverage and depth
-  -q, --quiet      silence messages
-  -h, --help       show this help message and exit
+  -r {pe,se,ont,int}  read-type (paired/single/nanopore/interleaved)
+  -s [scheme]         force scheme, see bart-update -s
+  -p [95]             template percent identity cutoff
+  -o [input path]     export alleles to fasta
+  -k, --keep          keep temporary files
+  -a, --alt           consider alternative hits when assigning ST
+  -l [cwd]            create logfile
+  -t [4]              number of threads
+  -v, --verbose       print allele and alt-hits if different from profile
+  -vv, --verboser     verbose with percid, coverage and depth
+  -q, --quiet         silence messages
+  -h, --help          show this help message and exit
 ```
 I like to test bart on SRA reads like so:
 ```
@@ -137,8 +139,9 @@ bart-update -r Acinetobacter_baumannii#1
 `bart-profile` is an interactive script which returns the ST
 or closest ST(s) for a combination of alleles in a scheme.
 ```
-usage: bart-profile [scheme]
-
+usage: bart-profile [scheme] [ST]
+```
+```
 $ bart-profile Helicobacter_cinaedi
 enter allele for 23S_rRNA: 4
 enter allele for ppa: 2
@@ -149,14 +152,13 @@ enter allele for tkt: 1
 enter allele for cdtB: 2
 scheme: Helicobacter_cinaedi	ST: 10	23S_rRNA(4)	ppa(2)	aspA(2)	aroE(2)	atpA(2)	tkt(1)	cdtB(2)	clonal_complex(9)
 ```
-That's it!
-
-**Bugs / issues / development:**
-* Currently only works on paired-end reads. Support for
-single-end and long reads is coming soon!
-* bart guesses the read pairs of input 
-  files based on the filename and suffix. Try to make 
-  sure the paired end read files have the same sample name.
+Alternatively, type STs after the scheme to display the allelic profiles.
+```
+$ bart-profile Helicobacter_cinaedi 10 11 12
+scheme: Helicobacter_cinaedi	ST: 10	23S_rRNA(4)	ppa(2)	aspA(2)	aroE(2)	atpA(2)	tkt(1)	cdtB(2)	clonal_complex(9)
+scheme: Helicobacter_cinaedi	ST: 11	23S_rRNA(2)	ppa(2)	aspA(2)	aroE(2)	atpA(2)	tkt(1)	cdtB(2)	clonal_complex(9)
+scheme: Helicobacter_cinaedi	ST: 12	23S_rRNA(5)	ppa(5)	aspA(2)	aroE(5)	atpA(5)	tkt(1)	cdtB(3)	clonal_complex(12)
+```
 
 **References:**
 * [Philip T.L.C. Clausen, Frank M. Aarestrup & Ole Lund, "Rapid and precise alignment 
