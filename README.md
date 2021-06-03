@@ -32,11 +32,11 @@ https://github.com/tomdstanton/bart
 
 ## Installation
 
-```
+```sh
 git clone --recursive https://github.com/tomdstanton/bart && cd bart && python setup.py install
 ```
 ### Usage
-```
+```sh
 usage: bart input.fq.gz [options] > outfile.tab
 
 --options [defaults]:
@@ -54,7 +54,7 @@ usage: bart input.fq.gz [options] > outfile.tab
   -h, --help          show this help message and exit
 ```
 I like to test bart on SRA reads like so:
-```
+```sh
 fastq-dump SRR14224855 --split-files --gzip && bart SRR14224855*
 ```
 * MLST of these reads completed in 9.6 seconds on a 4-core laptop.
@@ -65,7 +65,7 @@ scheme choosing heuristics.
 
 For example if you have Staphylococcus reads,
 see if the scheme is included:
-```
+```sh
 $ bart-update -s | grep Staphylococcus
 Staphylococcus_aureus
 Staphylococcus_chromogenes
@@ -76,7 +76,7 @@ Staphylococcus_lugdunensis
 Staphylococcus_pseudintermedius
 ```
 Now you can run:
-```
+```sh
 bart SRR14224855* -s Staphylococcus_aureus
 ```
 Output is now a single tab-separated line.
@@ -108,7 +108,7 @@ or if the top allele hit isn't the same as the assigned profiles:
 |-------------|-----------------------|---|-------------------------------------|-------------------------------------|------------------------------|-------------------------------|--------------------------------|--------------------------------|----------------------------------|---------------------|
 
 ### bart-update
-```
+```sh
 usage: bart-update [options]
 
 --options [defaults]:
@@ -126,19 +126,19 @@ file in the PubMLST format. Check out an example
 and 
 [mapping](https://rest.pubmlst.org/db/pubmlst_mflocculare_seqdef/schemes/1/profiles_csv)
 file.
-```
+```sh
 bart-update -a scheme.fna scheme.tab
 ```
 Sometimes there are 2 schemes for a species which is problematic because
 the heuristics will pick the same one every time. For _A. baumannii_,
 I don't want the Oxford  scheme to be considered, so I simply run:
-```
+```sh
 bart-update -r Acinetobacter_baumannii#1
 ```
 ### bart-profile
 `bart-profile` is an interactive script which returns the ST
 or closest ST(s) for a combination of alleles in a scheme.
-```
+```sh
 usage: bart-profile [scheme] [ST]
 ```
 ```
@@ -153,7 +153,7 @@ enter allele for cdtB: 2
 scheme: Helicobacter_cinaedi	ST: 10	23S_rRNA(4)	ppa(2)	aspA(2)	aroE(2)	atpA(2)	tkt(1)	cdtB(2)	clonal_complex(9)
 ```
 Alternatively, type STs after the scheme to display the allelic profiles.
-```
+```sh
 $ bart-profile Helicobacter_cinaedi 10 11 12
 scheme: Helicobacter_cinaedi	ST: 10	23S_rRNA(4)	ppa(2)	aspA(2)	aroE(2)	atpA(2)	tkt(1)	cdtB(2)	clonal_complex(9)
 scheme: Helicobacter_cinaedi	ST: 11	23S_rRNA(2)	ppa(2)	aspA(2)	aroE(2)	atpA(2)	tkt(1)	cdtB(2)	clonal_complex(9)
