@@ -32,6 +32,7 @@ def parse_args():
     options.add_argument('-o', metavar='input path', nargs='?', type=str, const='', help='export alleles to fasta')
     options.add_argument('-k', '--keep', action='store_true', default=False, help='keep temporary files')
     options.add_argument('-a', '--alt', action='store_true', default=False, help='consider alternative hits when assigning ST')
+    options.add_argument('-amr', metavar='90', nargs='?', type=str, const='', help='screen for AMR genes, add percid')
     options.add_argument('-l', metavar='cwd', nargs='?', type=str, const='', help='create logfile')
     options.add_argument('-t', type=int, default=4, metavar='[4]', help='number of threads')
     options.add_argument('-v', '--verbose', action='store_true', default=False, help='print allele and alt-hits if different from profile')
@@ -120,6 +121,40 @@ def main():
         logger.info(f'reads for {sample}: {" ".join(reads[filenames])}')
         logger.info(f'assuming reads are {rtypes[readtype]}')
 
+        ##### AMR Gene Screening #####
+        if args.amr is not None:
+            if not 'amr' in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/indexes/')]:
+                logger.info("amr index not found, building from NCBI")
+                os.system("bart-update -amr")
+            logger.info('screening for AMR genes')
+            amr_percid = args.amr
+            if amr_percid == '':
+                amr_percid = '90'
+            kma(reads[filenames], f'/tmp/{sample}_amr', amr_percid, f'{db_path}/indexes/amr', threads, readtype)
+            with open(f'/tmp/{sample}_amr.res', newline='\n') as res:
+                r = res.read().splitlines()[1:] # skip header
+            if len(r) == 0:  # EXIT IF NO HITS
+                logger.error('no hits found')
+                continue
+            else:
+                logger.info(f'{len(r)} hits found')
+                print('sample\tgene\tdescription\tlength\tidentity\tcoverage\tdepth')
+                for line in r:
+                    result = [x.strip(' ') for x in line.split('\t')]
+                    print(sample + '\t' + '\t'.join([result[0].split(' ')[0]]
+                                    + [result[0].split(' ')[1].replace('_', ' ')]
+                                    + result[3:6] + [result[8]]))
+
+            if not args.keep:
+                logger.info(f'cleaning up files in /tmp/')
+                for f in os.listdir('/tmp/'):
+                    if sample in f:
+                        os.remove(f'/tmp/{f}')
+            else:
+                logger.info(f'kept files in /tmp/')
+
+            continue
+
         if args.s is not None:
             if not args.s in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
                 exit(logger.error(f'{args.s} not a valid scheme, use bart-update -s to see valid schemes'))
@@ -134,7 +169,6 @@ def main():
         # [0]Template [1]Score [2]Expected [3]Template_length [4]Template_Identity
         # [5]Template_Coverage [6]Query_Identity [7]Query_Coverage [8]Depth [9]q_value
         kma(reads[filenames], f'/tmp/{sample}', str(args.p), f'{db_path}/indexes/{scheme}', threads, readtype)
-
         with open(f'/tmp/{sample}.res', newline='\n') as res:
         #with open('/home/tom/PycharmProjects/bart/tests/ERR5693750.res', newline='\n') as res:
             r = res.read().splitlines()[1:] # skip header
@@ -278,23 +312,6 @@ def main():
 
                 print(out)
 
-        ## Legacy printing ##
-        # print('Sample\tScheme\tST\t' + "\t".join([str(x) for x in headers]))
-        # if len(profile_dict) == 0:
-        #     out = sample + '\t' + scheme + '\t' + '?'
-        #     for gene in res_dict.keys():
-        #         out += '\t' + res_dict[gene][0]
-        #     print(out)
-        # else: # just print results if no profile match
-        #     for st in profile_dict.keys():
-        #         out = sample + '\t' + scheme + '\t' + str(st)
-        #         for k, v in profile_dict[st].items():
-        #             if k in [s.strip('~').strip('!').strip('*') for s in headers]:
-        #                 if v != '':
-        #                     out += '\t' + v
-        #             else:
-        #                 out += '\t-'
-        #         print(out)
 
         if args.o is not None:
             outfile = args.o

@@ -27,6 +27,7 @@ def parse_args():
     options.add_argument('-p', action='store_true', default=False, help='update pubMLST schemes')
     options.add_argument('-a', metavar='', nargs='*', type=Path, help='path to custom scheme fasta and csv')
     options.add_argument('-r', metavar='', type=str, nargs='*', help='name of scheme(s) to remove')
+    options.add_argument('-amr', action='store_true', default=False, help='update AMR index')
     options.add_argument('-h', action="help", help='show this help message and exit')
     if len(argv) == 1:
         exit(parser.print_help())
@@ -121,6 +122,14 @@ def main():
         for species in findall('<species>(.*?)</species>', get('https://pubmlst.org/static/data/dbases.xml').text, DOTALL):
             build_mlst(species)
 
+    if args.amr:
+        fasta = []
+        for i in get('https://ftp.ncbi.nlm.nih.gov/pathogen/Antimicrobial_resistance/AMRFinderPlus/database/latest/AMR_CDS').text.split('\n'):
+           if i.startswith('>'):
+               logger.info(f"adding {i.split('|')[5]}")
+               fasta.append(f">{i.split('|')[5]} {i.split('|')[7].split(' ')[0]}")
+           else: fasta.append(i)
+        index('\n'.join(fasta), f'{db_path}/indexes/amr')
 
 if __name__ == '__main__':
     main()
