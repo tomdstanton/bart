@@ -1,9 +1,9 @@
 # bart
-**ba**cterial **r**ead **t**yper
+**ba**cterial **r**ead **t**yper :dna: :skateboard: :microbe:
 
 <centre>![Image](https://github.com/tomdstanton/bart/blob/master/bart_logo.png)
 
-_By Tom Stanton_ \
+_By Tom Stanton_ :scientist: \
 [![alt text][1.1]][1] [![alt text][6.1]][6] \
 Issues/queries/advice?
 [email me!](mailto:s1895738@ed.ac.uk?subject=[bart])
@@ -13,7 +13,7 @@ Issues/queries/advice?
 [6]: http://www.github.com/tomdstanton
 [6.1]: http://i.imgur.com/0o48UoR.png (github icon with padding)
 
-### Introduction
+### Introduction :open_book:
 bart is a bacterial MLST tool for NGS reads,
 designed to be fast and very easy to use.
 It uses heuristics to choose the best scheme for
@@ -25,17 +25,17 @@ bart - BActerial Read Typer
 Thomas David Stanton, 2021
 https://github.com/tomdstanton/bart
 ```
-### Dependencies
+### Dependencies :toolbox:
 * python >=3.7
 * [kma](https://anaconda.org/bioconda/kma) (use conda)
 * [refseq_masher](https://anaconda.org/bioconda/refseq_masher) (use conda)
 
-## Installation
+### Installation :gear:
 
 ```sh
 git clone --recursive https://github.com/tomdstanton/bart && cd bart && python setup.py install
 ```
-### Usage
+### Usage :computer:
 ```sh
 usage: bart input.fq.gz [options] > outfile.tab
 
