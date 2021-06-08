@@ -133,7 +133,7 @@ bart SRR14224855* -amr > SRR14224855_amr.tab
 | SRR14224855 | aur        | zinc metalloproteinase aureolysin                                                                          | 1530   | 99.15    | 100.00   | 82.74  | 
 | SRR14224855 | mecA       | PBP2a family beta-lactam-resistant peptidoglycan transpeptidase MecA                                       | 2007   | 99.95    | 100.00   | 47.73  | 
 | SRR14224855 | blaZ       | penicillin-hydrolyzing class A beta-lactamase BlaZ                                                         | 846    | 97.99    | 100.00   | 17.73  | 
-_output truncated_                                                                 | 666    | 98.80    | 100.00   | 51.46  | 
+_output truncated_
 
 * This completed in 3.6 seconds on a 4-core laptop.
 
