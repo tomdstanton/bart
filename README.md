@@ -133,29 +133,7 @@ bart SRR14224855* -amr > SRR14224855_amr.tab
 | SRR14224855 | aur        | zinc metalloproteinase aureolysin                                                                          | 1530   | 99.15    | 100.00   | 82.74  | 
 | SRR14224855 | mecA       | PBP2a family beta-lactam-resistant peptidoglycan transpeptidase MecA                                       | 2007   | 99.95    | 100.00   | 47.73  | 
 | SRR14224855 | blaZ       | penicillin-hydrolyzing class A beta-lactamase BlaZ                                                         | 846    | 97.99    | 100.00   | 17.73  | 
-| SRR14224855 | blaZ       | penicillin-hydrolyzing class A beta-lactamase BlaZ                                                         | 846    | 96.81    | 100.00   | 20.74  | 
-| SRR14224855 | blaPC1     | BlaZ family penicillin-hydrolyzing class A beta-lactamase PC1                                              | 846    | 99.41    | 100.00   | 33.72  | 
-| SRR14224855 | dfrG       | trimethoprim-resistant dihydrofolate reductase DfrG                                                        | 498    | 100.00   | 100.00   | 30.99  | 
-| SRR14224855 | fosB-Saur  | FosB1/FosB3 family fosfomycin resistance bacillithiol transferase                                          | 420    | 99.29    | 100.00   | 33.94  | 
-| SRR14224855 | erm(C)     | 23S rRNA (adenine(2058)-N(6))-methyltransferase Erm(C)                                                     | 735    | 99.05    | 100.00   | 34.10  | 
-| SRR14224855 | ant(4')-Ia | aminoglycoside O-nucleotidyltransferase ANT(4')-Ia                                                         | 762    | 99.87    | 100.00   | 100.94 | 
-| SRR14224855 | aac(6')-Ie | bifunctional aminoglycoside N-acetyltransferase AAC(6')-Ie/aminoglycoside O-phosphotransferase APH(2'')-Ia | 1440   | 100.00   | 100.00   | 82.66  | 
-| SRR14224855 | blaR1      | beta-lactam sensor/signal transducer BlaR1                                                                 | 1758   | 99.15    | 100.00   | 45.90  | 
-| SRR14224855 | tet(38)    | tetracycline efflux MFS transporter Tet(38)                                                                | 1353   | 100.00   | 100.00   | 62.72  | 
-| SRR14224855 | blaI_of_Z  | penicillinase repressor BlaI                                                                               | 381    | 99.48    | 100.00   | 57.88  | 
-| SRR14224855 | tet(L)     | tetracycline efflux MFS transporter Tet(L)                                                                 | 1377   | 100.00   | 100.00   | 48.56  | 
-| SRR14224855 | ant(6)-Ia  | aminoglycoside nucleotidyltransferase ANT(6)-Ia                                                            | 864    | 100.00   | 100.00   | 50.48  | 
-| SRR14224855 | spw        | ANT(9) family aminoglycoside nucleotidyltransferase Spw                                                    | 810    | 100.00   | 100.00   | 60.14  | 
-| SRR14224855 | lsa(E)     | ABC-F type ribosomal protection protein Lsa(E)                                                             | 1485   | 100.00   | 100.00   | 51.94  | 
-| SRR14224855 | lnu(B)     | lincosamide nucleotidyltransferase Lnu(B)                                                                  | 804    | 100.00   | 100.00   | 42.03  | 
-| SRR14224855 | erm(C)     | 23S rRNA (adenine(2058)-N(6))-methyltransferase Erm(C)                                                     | 735    | 98.78    | 100.00   | 4.08   | 
-| SRR14224855 | fexA       | chloramphenicol/florfenicol efflux MFS transporter FexA                                                    | 1428   | 98.88    | 100.00   | 46.28  | 
-| SRR14224855 | hld        | delta-hemolysin                                                                                            | 81     | 100.00   | 100.00   | 20.65  | 
-| SRR14224855 | hlgC       | bi-component gamma-hemolysin HlgCB subunit C                                                               | 948    | 95.15    | 100.00   | 49.72  | 
-| SRR14224855 | lmrS       | multidrug efflux MFS transporter LmrS                                                                      | 1443   | 99.10    | 100.00   | 43.66  | 
-| SRR14224855 | sel26      | staphylococcal enterotoxin type 26                                                                         | 753    | 95.75    | 99.34    | 31.14  | 
-| SRR14224855 | erm(C)     | 23S rRNA (adenine(2058)-N(6))-methyltransferase Erm(C)                                                     | 735    | 98.91    | 100.00   | 6.39   | 
-| SRR14224855 | sey        | staphylococcal enterotoxin type Y                                                                          | 666    | 98.80    | 100.00   | 51.46  | 
+_output truncated_                                                                 | 666    | 98.80    | 100.00   | 51.46  | 
 
 * This completed in 3.6 seconds on a 4-core laptop.
 
