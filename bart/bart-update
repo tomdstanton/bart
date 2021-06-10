@@ -6,7 +6,7 @@ import os, logging, asyncio, sys
 from re import DOTALL, findall
 from requests import get
 from pathlib import Path
-from shutil import copyfile
+from shutil import copyfile, which
 import bart
 from bart.scripts.version import __version__
 from bart.scripts.kma import index
@@ -42,6 +42,8 @@ def main():
     logger = logging.getLogger('root')
     logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
     logger.setLevel(logging.DEBUG)
+    if which('kma') is None:
+        sys.exit(logger.error('kma not found'))
     logging.getLogger('urllib3').setLevel(logging.WARNING)
     args = parse_args()
 
