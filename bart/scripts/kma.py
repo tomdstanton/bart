@@ -3,6 +3,7 @@ import logging
 
 
 def index(infile, outfile):
+
     cmd = ['kma', 'index', '-i', '--', '-o', outfile]
     logger = logging.getLogger('root')
     logger.info(f'{" ".join(cmd)}')

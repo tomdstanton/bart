@@ -4,11 +4,11 @@
 from re import search, compile, IGNORECASE
 from collections import defaultdict
 from argparse import ArgumentParser, SUPPRESS
-import os, logging
+import os, logging, sys
+from shutil import which
 from collections import Counter
 from pathlib import Path
 from time import time
-from sys import version_info, platform
 import bart
 from bart.scripts.version import __version__
 from bart.scripts.kma import kma
@@ -51,6 +51,8 @@ def main():
     logger = logging.getLogger('root')
     logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
     logger.setLevel(logging.DEBUG)
+    if which('kma') is None:
+        sys.exit(logger.error('kma not found'))
     args = parse_args()
     if args.quiet:
         logger.setLevel(logging.ERROR)
@@ -60,7 +62,8 @@ def main():
             logpath = f'{os.getcwd()}/bart_{str(time()).split(".")[0]}.log'
         logger.addHandler(logging.FileHandler(logpath))
     logger.info(f'this is bart {__version__} by {__author__}')
-    logger.info(f'running on {platform} with Python {str(version_info[:3])[1:-1].replace(", ", ".")}')
+    logger.info(f'running on {sys.platform} with Python '
+                f'{str(sys.version_info[:3])[1:-1].replace(", ", ".")}')
 
 ##### Check input #####
     threads = str(args.t)
@@ -133,7 +136,7 @@ def main():
             kma(reads[filenames], f'/tmp/{sample}_amr', amr_percid, f'{db_path}/indexes/amr', threads, readtype)
             with open(f'/tmp/{sample}_amr.res', newline='\n') as res:
                 r = res.read().splitlines()[1:] # skip header
-            if len(r) == 0:  # EXIT IF NO HITS
+            if len(r) == 0:  # sys.exit IF NO HITS
                 logger.error('no hits found')
                 continue
             else:
@@ -157,7 +160,7 @@ def main():
 
         if args.s is not None:
             if not args.s in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
-                exit(logger.error(f'{args.s} not a valid scheme, use bart-update -s to see valid schemes'))
+                sys.exit(logger.error(f'{args.s} not a valid scheme, use bart-update -s to see valid schemes'))
             else:
                 scheme = args.s
 
@@ -168,11 +171,13 @@ def main():
 ##### Run mapping and parse results #####
         # [0]Template [1]Score [2]Expected [3]Template_length [4]Template_Identity
         # [5]Template_Coverage [6]Query_Identity [7]Query_Coverage [8]Depth [9]q_value
+        if not scheme in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/indexes/')]:
+            sys.exit(logger.error(f'{scheme} index not found in {db_path}/indexes/'))
         kma(reads[filenames], f'/tmp/{sample}', str(args.p), f'{db_path}/indexes/{scheme}', threads, readtype)
         with open(f'/tmp/{sample}.res', newline='\n') as res:
         #with open('/home/tom/PycharmProjects/bart/tests/ERR5693750.res', newline='\n') as res:
             r = res.read().splitlines()[1:] # skip header
-        if len(r) == 0:  # EXIT IF NO HITS
+        if len(r) == 0:
             logger.error('no hits found')
             continue
         else:

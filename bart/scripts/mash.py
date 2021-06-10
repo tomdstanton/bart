@@ -1,5 +1,6 @@
 import logging
-import os
+import os, sys
+from shutil import which
 from re import sub
 from subprocess import Popen, PIPE
 
@@ -16,6 +17,8 @@ def choose_scheme(sample, pairs, reads, db_path):
             return x[0]
 
     # Run refseq_masher
+    if which('refseq_masher') is None:
+        sys.exit(logger.error('refseq_masher not found'))
     cmd = ['refseq_masher', 'matches', pairs[reads][0]]
     logger.info(f'{" ".join(cmd)}')
     child = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()

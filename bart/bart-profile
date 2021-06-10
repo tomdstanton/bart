@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser, SUPPRESS
-import os, logging
-from sys import version_info, platform
+import os, logging, sys
 from collections import Counter
 import bart
 from bart.scripts.version import __version__
@@ -31,13 +30,14 @@ def main():
     logger.setLevel(logging.DEBUG)
     args = parse_args()
     logger.info(f'this is bart {__version__} by {__author__}')
-    logger.info(f'running on {platform} with Python {str(version_info[:3])[1:-1].replace(", ", ".")}')
+    logger.info(f'running on {sys.platform} with Python '
+                f'{str(sys.version_info[:3])[1:-1].replace(", ", ".")}')
 
 
 ##### Create dict for genes and alleles from user input ########
 
     if not args.scheme in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]:
-        exit(logger.error(f'{args.scheme} not a valid scheme, use bart-update -s to see valid schemes'))
+        sys.exit(logger.error(f'{args.scheme} not a valid scheme, use bart-update -s to see valid schemes'))
     else:
         scheme = args.scheme
 
@@ -57,6 +57,9 @@ def main():
     if len(args.ST) > 0:
         for st in args.ST:
             st = int(st)
+            if st not in scheme_dict.keys():
+                logger.error(f'{st} is not an ST in {scheme}')
+                continue
             out = f'scheme: {scheme}\tST: {st}'
             for gene, allele in scheme_dict[st].items():
                 out += f'\t{gene}({allele})'
@@ -86,7 +89,7 @@ def main():
 
 ##### Printing output #####
         if len(profile_dict) == 0:
-            exit(logger.error('no profile match'))
+            sys.exit(logger.error('no profile match'))
 
         else:
             for k in profile_dict.keys():

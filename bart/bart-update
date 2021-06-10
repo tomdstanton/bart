@@ -2,12 +2,11 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser
-import os, logging, asyncio
+import os, logging, asyncio, sys
 from re import DOTALL, findall
 from requests import get
 from pathlib import Path
 from shutil import copyfile
-from sys import version_info, platform, argv
 import bart
 from bart.scripts.version import __version__
 from bart.scripts.kma import index
@@ -29,8 +28,8 @@ def parse_args():
     options.add_argument('-r', metavar='', type=str, nargs='*', help='name of scheme(s) to remove')
     options.add_argument('-amr', action='store_true', default=False, help='update AMR index')
     options.add_argument('-h', action="help", help='show this help message and exit')
-    if len(argv) == 1:
-        exit(parser.print_help())
+    if len(sys.argv) == 1:
+        sys.exit(parser.print_help())
     args = parser.parse_args()
     return args
 
@@ -43,11 +42,12 @@ def main():
     logger = logging.getLogger('root')
     logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
     logger.setLevel(logging.DEBUG)
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
     args = parse_args()
 
     if args.s:
         d = [f.name.split('.')[0] for f in os.scandir(f'{db_path}/mapping/')]
-        exit(print(*sorted(d), sep="\n"))
+        sys.exit(print(*sorted(d), sep="\n"))
 
     if args.S:
         d = []
@@ -55,10 +55,11 @@ def main():
             with open(f) as file:
                 l = file.readline()
                 d.append(l.replace(l.split('\t')[0], f.name.split('.')[0]).strip())
-        exit(print(*sorted(d), sep="\n"))
+        sys.exit(print(*sorted(d), sep="\n"))
 
     logger.info(f'this is bart {__version__} by {__author__}')
-    logger.info(f'running on {platform} with Python {str(version_info[:3])[1:-1].replace(", ", ".")}')
+    logger.info(f'running on {sys.platform} with Python '
+                f'{str(sys.version_info[:3])[1:-1].replace(", ", ".")}')
 
     if args.a:
         names = []
@@ -77,13 +78,13 @@ def main():
                 else:
                     break
             else:
-                exit(logger.error(f'{i} is not a valid file'))
+                sys.exit(logger.error(f'{i} is not a valid file'))
 
         # remove dupes to see if name is the same
         names = list(dict.fromkeys(names))
 
         if len(names) > 1:
-            exit(logger.error(f'files need to have same names, not: {names[0]}'))
+            sys.exit(logger.error(f'files need to have same names, not: {names[0]}'))
         copyfile(mapping, f'{db_path}/mapping/{names[0]}.tab')
         with open(fasta, 'r') as f:
             index(f.read(), f'{db_path}/indexes/{names[0]}')
@@ -104,6 +105,7 @@ def main():
 
         @background
         def build_mlst(s):
+            logging.getLogger("requests").setLevel(logging.WARNING)
             scheme, urls = s.split('\n'), []
             name = scheme[0].replace(' ', '_').replace('/', '_').strip('.')
             for l in scheme:
