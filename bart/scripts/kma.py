@@ -1,11 +1,13 @@
 from subprocess import Popen, PIPE, DEVNULL
-import logging
+import logging, sys
+from shutil import which
 
 
 def index(infile, outfile):
-
     cmd = ['kma', 'index', '-i', '--', '-o', outfile]
     logger = logging.getLogger('root')
+    if which('kma') is None:
+        sys.exit(logger.error('kma not found'))
     logger.info(f'{" ".join(cmd)}')
     child = Popen(cmd, stdin=PIPE, stderr=DEVNULL)
     child.stdin.write(infile.encode())
@@ -14,6 +16,8 @@ def index(infile, outfile):
 
 def kma(reads, outfile, percid, scheme, threads, readtype):
     logger = logging.getLogger('root')
+    if which('kma') is None:
+        sys.exit(logger.error('kma not found'))
 
     if readtype == 'pe':  #optimised for illumina paired end
         cmd = ['kma', '-ipe', reads[0], reads[1], '-ID', percid, '-o', outfile, '-t_db', scheme, '-t', threads,

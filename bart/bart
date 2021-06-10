@@ -5,7 +5,6 @@ from re import search, compile, IGNORECASE
 from collections import defaultdict
 from argparse import ArgumentParser, SUPPRESS
 import os, logging, sys
-from shutil import which
 from collections import Counter
 from pathlib import Path
 from time import time
@@ -51,8 +50,6 @@ def main():
     logger = logging.getLogger('root')
     logging.basicConfig(format='%(asctime)s | %(message)s', datefmt="%H:%M:%S")
     logger.setLevel(logging.DEBUG)
-    if which('kma') is None:
-        sys.exit(logger.error('kma not found'))
     args = parse_args()
     if args.quiet:
         logger.setLevel(logging.ERROR)
