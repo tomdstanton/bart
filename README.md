@@ -3,7 +3,7 @@
 
 <centre>![Image](https://github.com/tomdstanton/bart/blob/master/bart_logo.png)
 
-_By Tom Stanton_ :scientist: \
+_By Tom Stanton_ (he/him) :scientist: \
 [![alt text][1.1]][1] [![alt text][6.1]][6] \
 Issues/queries/advice?
 [email me!](mailto:s1895738@ed.ac.uk?subject=[bart])
