@@ -34,6 +34,7 @@ https://github.com/tomdstanton/bart
 
 ```sh
 git clone --recursive https://github.com/tomdstanton/bart && cd bart && python setup.py install
+conda install -c bioconda kma refseq_masher  
 ```
 ### Usage :computer:
 ```sh
