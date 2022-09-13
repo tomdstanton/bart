@@ -15,6 +15,8 @@ from bart.scripts.kma import kma
 from bart.scripts.mash import choose_scheme
 from bart.scripts.ascii import bart_ascii
 
+SYS_TEMP_DIR = os.environ.get('TMPDIR', '/tmp')
+
 __author__ = "Tom Stanton"
 __license__ = "MIT"
 __maintainer__ = "Tom Stanton"
@@ -133,8 +135,8 @@ def main():
             amr_percid = args.amr
             if amr_percid == '':
                 amr_percid = '90'
-            kma(reads[filenames], f'/tmp/{sample}_amr', amr_percid, f'{db_path}/indexes/amr', threads, readtype)
-            with open(f'/tmp/{sample}_amr.res', newline='\n') as res:
+            kma(reads[filenames], f'{SYS_TEMP_DIR}/{sample}_amr', amr_percid, f'{db_path}/indexes/amr', threads, readtype)
+            with open(f'{SYS_TEMP_DIR}/{sample}_amr.res', newline='\n') as res:
                 r = res.read().splitlines()[1:] # skip header
             if len(r) == 0:  # sys.exit IF NO HITS
                 logger.error('no hits found')
@@ -149,12 +151,12 @@ def main():
                                     + result[3:6] + [result[8]]))
 
             if not args.keep:
-                logger.info(f'cleaning up files in /tmp/')
-                for f in os.listdir('/tmp/'):
+                logger.info(f'cleaning up files in {SYS_TEMP_DIR}/')
+                for f in os.listdir('{SYS_TEMP_DIR}/'):
                     if sample in f:
-                        os.remove(f'/tmp/{f}')
+                        os.remove(f'{SYS_TEMP_DIR}/{f}')
             else:
-                logger.info(f'kept files in /tmp/')
+                logger.info(f'kept files in {SYS_TEMP_DIR}/')
 
             continue
 
@@ -173,8 +175,8 @@ def main():
         # [5]Template_Coverage [6]Query_Identity [7]Query_Coverage [8]Depth [9]q_value
         if not scheme in [f.name.split('.')[0] for f in os.scandir(f'{db_path}/indexes/')]:
             sys.exit(logger.error(f'{scheme} index not found in {db_path}/indexes/'))
-        kma(reads[filenames], f'/tmp/{sample}', str(args.p), f'{db_path}/indexes/{scheme}', threads, readtype)
-        with open(f'/tmp/{sample}.res', newline='\n') as res:
+        kma(reads[filenames], f'{SYS_TEMP_DIR}/{sample}', str(args.p), f'{db_path}/indexes/{scheme}', threads, readtype)
+        with open(f'{SYS_TEMP_DIR}/{sample}.res', newline='\n') as res:
         #with open('/home/tom/PycharmProjects/bart/tests/ERR5693750.res', newline='\n') as res:
             r = res.read().splitlines()[1:] # skip header
         if len(r) == 0:
@@ -325,7 +327,7 @@ def main():
                 if '_' in reads[filenames][0]:
                     delim = '_'
                 outfile = f'{reads[filenames][0].split(delim, 1)[0]}_alleles.fna'
-            with open(f'/tmp/{sample}.fsa', newline='\n') as fna, open(outfile, 'wt') as out:
+            with open(f'{SYS_TEMP_DIR}/{sample}.fsa', newline='\n') as fna, open(outfile, 'wt') as out:
                 for seq in fna.read().split('>')[1:]:
                     for k, v in res_dict.items():
                         if f'{k}_{v[0]}' in seq:
@@ -337,12 +339,12 @@ def main():
 
 ##### Cleanup #####
         if not args.keep:
-            logger.info(f'cleaning up files in /tmp/')
-            for f in os.listdir('/tmp/'):
+            logger.info(f'cleaning up files in {SYS_TEMP_DIR}/')
+            for f in os.listdir('{SYS_TEMP_DIR}/'):
                 if sample in f:
-                    os.remove(f'/tmp/{f}')
+                    os.remove(f'{SYS_TEMP_DIR}/{f}')
         else:
-            logger.info(f'kept files in /tmp/')
+            logger.info(f'kept files in {SYS_TEMP_DIR}/')
 
     logger.info(f'completed in {"{:.1f}".format(time() - start)} seconds{bart_ascii()}')
 

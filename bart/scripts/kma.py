@@ -22,7 +22,7 @@ def kma(reads, outfile, percid, scheme, threads, readtype):
         cmd = ['kma', '-i', reads[0], '-ID', percid, '-o', outfile, '-t_db', scheme, '-t', threads]
 
     if readtype == 'ont': #optimised for nanopore
-        cmd = ['kma', '-i', reads[0], '-ID', percid, '-o', outfile, '-t_db', scheme, '-t', threads, '-bcNano']
+        cmd = ['kma', '-i', reads[0], '-ID', percid, '-o', outfile, '-t_db', scheme, '-t', threads, '-bcNano', '-1t1', '-cge' ,'-ont'  ]
 
     if readtype == 'int':
         cmd = ['kma', '-int', reads[0], '-ID', percid,  '-o', outfile, '-t_db', scheme, '-t', threads,
