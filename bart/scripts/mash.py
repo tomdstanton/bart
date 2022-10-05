@@ -4,11 +4,11 @@ from shutil import which
 from re import sub
 from subprocess import Popen, PIPE
 
-
+SYSTEM_TEMP_DIR = os.getenv('TMPDIR', '/tmp')
 def choose_scheme(sample, pairs, reads, db_path):
     logger = logging.getLogger('root')
 
-    t = '/tmp/choose_scheme.bart'  # Check /tmp/choose_scheme.bart
+    t = f'{SYSTEM_TEMP_DIR}/choose_scheme.bart'  # Check /tmp/choose_scheme.bart
     if os.path.isfile(t):
         with open(t) as f:
             x = [i.split('\t')[1].strip() for i in f.readlines() if sample in i]

@@ -32,6 +32,14 @@ https://github.com/tomdstanton/bart
 
 ### Installation :gear:
 
+The last release can be installed via [BioConda](https://bioconda.github.io/):
+
+```bash
+conda install -c bioconda bart
+```
+
+#### Manual installation
+  
 ```sh
 git clone --recursive https://github.com/tomdstanton/bart && cd bart && python setup.py install
 conda install -c bioconda kma refseq_masher  
