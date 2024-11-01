@@ -128,7 +128,8 @@ def main():
 
     if args.amr:
         fasta = []
-        for i in get('https://ftp.ncbi.nlm.nih.gov/pathogen/Antimicrobial_resistance/AMRFinderPlus/database/latest/AMR_CDS').text.split('\n'):
+        https://ftp.ncbi.nlm.nih.gov/pathogen/Antimicrobial_resistance/AMRFinderPlus/database/latest/AMR_CDS.fa
+        for i in get('https://ftp.ncbi.nlm.nih.gov/pathogen/Antimicrobial_resistance/AMRFinderPlus/database/latest/AMR_CDS.fa').text.split('\n'):
            if i.startswith('>'):
                logger.info(f"adding {i.split('|')[5]}")
                fasta.append(f">{i.split('|')[5]} {i.split('|')[7].split(' ')[0]}")
